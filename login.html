@@ -42,6 +42,16 @@
       <div class="auth-error" id="loginError" hidden></div>
       <button class="btn btn--primary btn--block" type="submit" id="loginBtn">Entrar</button>
     </form>
+
+    <button class="auth-forgot" id="forgotToggle" type="button">¿Has olvidado tu contraseña?</button>
+    <div class="auth-recover" id="forgotPanel" hidden>
+      <p><strong>Si eres la administradora o administrador</strong> (la cuenta con rol de administración):
+      recupera el acceso definiendo o cambiando <code>ADMIN_PASSWORD</code> en las variables de entorno de
+      Railway y volviendo a desplegar. La contraseña se sincroniza sola en el siguiente arranque.</p>
+      <p><strong>Si eres otro usuario</strong> (una cuenta ficticia de prueba u otra que te haya dado el
+      administrador): pídele que te restablezca la contraseña desde el <em>Panel de accesos</em> — genera una
+      nueva al momento, sin necesidad de correo.</p>
+    </div>
   </div>
 </div>
 

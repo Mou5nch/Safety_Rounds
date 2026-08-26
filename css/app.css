@@ -987,6 +987,21 @@ tr:hover .row-actions { opacity: 1; }
   font-size: 13px; font-weight: 600; padding: 10px 12px; margin-bottom: 14px;
 }
 
+.auth-forgot {
+  display: block; width: 100%; text-align: center; margin-top: 16px;
+  font-size: 12.5px; font-weight: 600; color: var(--ink-3);
+}
+.auth-forgot:hover { color: var(--navy-soft); }
+.auth-recover {
+  margin-top: 12px; padding: 12px 13px; background: var(--surface); border-radius: var(--r-sm);
+  font-size: 12.5px; color: var(--ink-2); line-height: 1.55;
+}
+.auth-recover p { margin: 0 0 8px; }
+.auth-recover p:last-child { margin-bottom: 0; }
+.auth-recover code {
+  background: var(--navy-wash); color: var(--navy); border-radius: 4px; padding: 1px 5px; font-size: 11.5px;
+}
+
 /* ---------- Panel de accesos ---------- */
 .admin-page { max-width: 980px; margin: 0 auto; padding: 28px 24px 60px; }
 .admin-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 22px; flex-wrap: wrap; }

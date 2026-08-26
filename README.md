@@ -374,7 +374,19 @@ más desplegar:
   sin comprometer una cuenta real.
 
 Desde el panel de accesos (menú **Panel de accesos**, solo visible para el
-administrador) se pueden crear más usuarios ficticios o borrar los que sobren.
+administrador) se pueden crear más usuarios ficticios, restablecerles la
+contraseña o borrar los que sobren.
+
+**¿Y si alguien olvida la contraseña?** No hay correo configurado en la
+aplicación, así que la recuperación va por dos vías (también explicadas en el
+propio `login.html`, tras el enlace *¿Has olvidado tu contraseña?*):
+
+- **El administrador real** recupera el acceso definiendo o cambiando
+  `ADMIN_PASSWORD` en las variables de entorno de Railway y volviendo a
+  desplegar: la contraseña se sincroniza sola en el arranque siguiente.
+- **Cualquier otro usuario** pide al administrador que le restablezca la
+  contraseña desde el panel de accesos (botón ↻ junto a cada usuario): genera
+  una nueva al azar al momento, para copiarla y pasársela por un canal seguro.
 
 ### 10.4 Cómo se sigue el acceso
 

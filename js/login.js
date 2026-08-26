@@ -10,6 +10,14 @@
   var errEl = document.getElementById('loginError');
   var btn = document.getElementById('loginBtn');
 
+  var forgotToggle = document.getElementById('forgotToggle');
+  var forgotPanel = document.getElementById('forgotPanel');
+  if (forgotToggle) {
+    forgotToggle.addEventListener('click', function () {
+      forgotPanel.hidden = !forgotPanel.hidden;
+    });
+  }
+
   function target() {
     var next = new URLSearchParams(location.search).get('next');
     return (next && next.charAt(0) === '/') ? next : 'index.html';
