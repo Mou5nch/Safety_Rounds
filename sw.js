@@ -7,11 +7,14 @@
 // Al subir este nombre, la activación borra las cachés anteriores: es lo que
 // hace que quien tenga la aplicación instalada reciba de verdad la versión
 // nueva en lugar de seguir con los archivos guardados de la anterior.
-var CACHE = 'safety-rounds-v2';
+var CACHE = 'safety-rounds-v3';
 
 var ASSETS = [
   './',
   'index.html',
+  'login.html',
+  'admin.html',
+  'report.html',
   'manifest.webmanifest',
   'css/app.css',
   'js/icons.js',
@@ -24,6 +27,11 @@ var ASSETS = [
   'js/dashboard.js',
   'js/lists.js',
   'js/settings.js',
+  'js/share.js',
+  'js/auth.js',
+  'js/login.js',
+  'js/admin.js',
+  'js/report-viewer.js',
   'js/app.js',
   'vendor/jspdf.umd.min.js',
   'icons/favicon.svg',
@@ -75,6 +83,10 @@ self.addEventListener('fetch', function (e) {
 
   if (url.origin !== location.origin) return;
 
+  // La API nunca pasa por caché: sesión, panel de accesos e informes
+  // compartidos necesitan siempre el dato del servidor, no uno guardado.
+  if (url.pathname.indexOf('/api/') === 0) return;
+
   // Red primero para el HTML (así una versión nueva se ve al recargar),
   // caché primero para el resto de recursos estáticos.
   if (req.mode === 'navigate') {
@@ -84,7 +96,8 @@ self.addEventListener('fetch', function (e) {
         caches.open(CACHE).then(function (c) { c.put(req, copy); });
         return res;
       }).catch(function () {
-        return caches.match(req).then(function (hit) { return hit || caches.match('index.html'); });
+        var fallback = url.pathname.indexOf('/r/') === 0 ? 'report.html' : 'index.html';
+        return caches.match(req).then(function (hit) { return hit || caches.match(fallback); });
       })
     );
     return;

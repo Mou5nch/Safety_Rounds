@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<!-- Esta página se sirve en /r/<id>: sin esto, las rutas relativas (css/js)
+     se resolverían contra /r/ en lugar de la raíz del sitio. -->
+<base href="/">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Informe compartido — Safety Rounds</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="icons/favicon.svg" type="image/svg+xml">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body class="bare-page">
+
+<div class="report-wrap" id="reportWrap">
+  <div class="report-loading" id="reportLoading">Cargando informe…</div>
+</div>
+
+<script src="js/icons.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/report-viewer.js"></script>
+</body>
+</html>

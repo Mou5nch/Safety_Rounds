@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Panel de accesos — Safety Rounds</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="icons/favicon.svg" type="image/svg+xml">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body class="bare-page">
+
+<script>
+(function () {
+  try { if (!localStorage.getItem('sr:auth')) location.replace('login.html?next=/admin.html'); }
+  catch (e) {}
+})();
+</script>
+
+<div class="admin-page">
+  <header class="admin-head">
+    <div class="admin-head__title">
+      <h1>Panel de accesos</h1>
+      <p class="hint">Usuarios ficticios y su historial de conexión a la aplicación.</p>
+    </div>
+    <div class="admin-head__actions">
+      <a class="btn btn--ghost btn--sm" href="index.html">Volver a la aplicación</a>
+      <button class="btn btn--quiet btn--sm btn--icon" id="adminLogout" title="Cerrar sesión">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <div id="adminRoot">Cargando…</div>
+</div>
+
+<div class="toasts" id="toasts"></div>
+<div id="modalRoot"></div>
+
+<script src="js/icons.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/admin.js"></script>
+</body>
+</html>

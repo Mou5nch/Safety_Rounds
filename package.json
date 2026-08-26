@@ -1,0 +1,19 @@
+{
+  "name": "safety-rounds",
+  "version": "2.1.0",
+  "private": true,
+  "description": "Safety Rounds — servidor Node para enlaces compartidos y seguimiento de acceso",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cookie-parser": "^1.4.6",
+    "express": "^4.19.2",
+    "pg": "^8.11.5"
+  }
+}
