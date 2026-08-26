@@ -12,7 +12,7 @@
 
 const crypto = require('crypto');
 const { pool } = require('./db');
-const { hashPassword } = require('./auth');
+const { hashPassword, verifyPassword } = require('./auth');
 
 const DEMO_PASSWORD = process.env.SEED_USERS_PASSWORD || 'Rondas2026!';
 
@@ -26,8 +26,22 @@ const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'mou5nch@gmail.com').trim().toLo
 const ADMIN_NAME = process.env.ADMIN_NAME || 'Administrador';
 
 async function ensureRealAdmin() {
-  const { rows } = await pool.query('SELECT id FROM users WHERE username = $1', [ADMIN_EMAIL]);
-  if (rows.length) return;
+  const { rows } = await pool.query('SELECT id, password_hash FROM users WHERE username = $1', [ADMIN_EMAIL]);
+
+  if (rows.length) {
+    // Ya existe: esta es la vía de recuperación si te quedas fuera. Define
+    // (o cambia) ADMIN_PASSWORD en las variables de entorno de Railway y
+    // vuelve a desplegar — la contraseña se sincroniza sola en cada arranque.
+    if (process.env.ADMIN_PASSWORD) {
+      const matches = await verifyPassword(process.env.ADMIN_PASSWORD, rows[0].password_hash);
+      if (!matches) {
+        const hash = await hashPassword(process.env.ADMIN_PASSWORD);
+        await pool.query('UPDATE users SET password_hash = $1 WHERE id = $2', [hash, rows[0].id]);
+        console.log('[seed] Contraseña de ' + ADMIN_EMAIL + ' actualizada desde ADMIN_PASSWORD.');
+      }
+    }
+    return;
+  }
 
   const generated = !process.env.ADMIN_PASSWORD;
   const password = process.env.ADMIN_PASSWORD || crypto.randomBytes(9).toString('base64url');

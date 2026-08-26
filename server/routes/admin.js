@@ -6,6 +6,7 @@
 'use strict';
 
 const express = require('express');
+const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const { pool } = require('../db');
 const { requireAdmin } = require('../auth');
@@ -77,6 +78,26 @@ router.post('/users', requireAdmin, async function (req, res) {
     if (e.code === '23505') return res.status(409).json({ error: 'Ese usuario ya existe.' });
     console.error('[admin] error al crear usuario', e);
     res.status(500).json({ error: 'No se ha podido crear el usuario.' });
+  }
+});
+
+// Recuperación de contraseña para cuentas que no son la tuya: no hay correo
+// configurado, así que el administrador genera una contraseña nueva aquí y
+// se la pasa a quien la necesite. Para el propio administrador, la vía es
+// ADMIN_PASSWORD en las variables de entorno (ver server/seed.js).
+router.post('/users/:id/reset-password', requireAdmin, async function (req, res) {
+  try {
+    const password = crypto.randomBytes(9).toString('base64url');
+    const hash = await bcrypt.hash(password, 10);
+    const { rows } = await pool.query(
+      `UPDATE users SET password_hash = $1 WHERE id = $2 RETURNING username, name`,
+      [hash, req.params.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Ese usuario no existe.' });
+    res.json({ username: rows[0].username, name: rows[0].name, password: password });
+  } catch (e) {
+    console.error('[admin] error al restablecer contraseña', e);
+    res.status(500).json({ error: 'No se ha podido restablecer la contraseña.' });
   }
 });
 

@@ -113,10 +113,16 @@
           el('td', { text: String(u.session_count) }),
           el('td', { text: fmtWhen(u.last_seen_at) }),
           el('td', { text: fmtDuration(u.total_seconds) }),
-          el('td', {}, el('button', {
-            class: 'btn btn--quiet btn--sm btn--icon', title: 'Eliminar usuario', html: ico('trash', 15),
-            onclick: function () { deleteUser(u); }
-          }))
+          el('td', {}, el('div', { style: { display: 'flex', gap: '4px' } }, [
+            el('button', {
+              class: 'btn btn--quiet btn--sm btn--icon', title: 'Restablecer contraseña', html: ico('refresh', 15),
+              onclick: function () { resetPassword(u); }
+            }),
+            el('button', {
+              class: 'btn btn--quiet btn--sm btn--icon', title: 'Eliminar usuario', html: ico('trash', 15),
+              onclick: function () { deleteUser(u); }
+            })
+          ]))
         ]));
       });
       table.appendChild(tbody);
@@ -223,6 +229,41 @@
       fetch('/api/admin/users/' + u.id, { method: 'DELETE', credentials: 'include' })
         .then(function (res) { if (!res.ok) throw new Error(); UI.toast('Usuario eliminado.'); load(); })
         .catch(function () { UI.toast('No se ha podido eliminar.', 'err'); });
+    });
+  }
+
+  function resetPassword(u) {
+    UI.confirm({
+      title: 'Restablecer contraseña de ' + u.name,
+      text: 'Se generará una contraseña nueva al azar y dejará de valer la anterior. Tendrás que pasársela tú a quien use esta cuenta.',
+      confirmLabel: 'Restablecer', danger: false, icon: 'refresh'
+    }).then(function (ok) {
+      if (!ok) return;
+      fetch('/api/admin/users/' + u.id + '/reset-password', { method: 'POST', credentials: 'include' })
+        .then(function (res) { return res.json().then(function (d) { return { ok: res.ok, data: d }; }); })
+        .then(function (r) {
+          if (!r.ok) { UI.toast((r.data && r.data.error) || 'No se ha podido restablecer.', 'err'); return; }
+          showNewPassword(r.data);
+        }).catch(function () { UI.toast('No se ha podido conectar con el servidor.', 'err'); });
+    });
+  }
+
+  function showNewPassword(data) {
+    var input = el('input', { class: 'input', value: data.password, readonly: true, onclick: function () { input.select(); } });
+    var body = el('div', {}, [
+      UI.field('Contraseña nueva', input, 'Cópiala ahora: no se volverá a mostrar. Pásasela a ' + data.name + ' por un canal seguro.')
+    ]);
+    UI.modal({
+      title: 'Contraseña restablecida', subtitle: '@' + data.username, icon: 'refresh',
+      body: body,
+      buttons: [{
+        label: 'Copiar contraseña', icon: 'copy', kind: 'primary',
+        onClick: function () {
+          if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(data.password).catch(function () {});
+          UI.toast('Contraseña copiada.');
+          return false;
+        }
+      }]
     });
   }
 
