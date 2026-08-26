@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Iniciar sesión — Safety Rounds</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="icons/favicon.svg" type="image/svg+xml">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body class="bare-page">
+
+<div class="auth-wrap">
+  <div class="auth-card">
+    <div class="auth-card__brand">
+      <div class="brand__mark">
+        <svg width="21" height="21" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M50 10 L86 25 V52 C86 71 71 85 50 92 C29 85 14 71 14 52 V25 Z" fill="none" stroke="#fff" stroke-width="7"/>
+          <path d="M34 51 L45 62 L67 38" fill="none" stroke="#F16B6B" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <span>Safety Rounds</span>
+    </div>
+
+    <h1 class="auth-card__title">Iniciar sesión</h1>
+    <p class="hint">Acceso con las cuentas de prueba del departamento. Cada inicio y cierre de sesión queda registrado en el panel de accesos.</p>
+
+    <form id="loginForm" class="auth-form" autocomplete="on">
+      <div class="field">
+        <label class="label" for="fUser">Usuario</label>
+        <input class="input" id="fUser" name="username" autocomplete="username" required>
+      </div>
+      <div class="field">
+        <label class="label" for="fPass">Contraseña</label>
+        <input class="input" id="fPass" name="password" type="password" autocomplete="current-password" required>
+      </div>
+      <div class="auth-error" id="loginError" hidden></div>
+      <button class="btn btn--primary btn--block" type="submit" id="loginBtn">Entrar</button>
+    </form>
+  </div>
+</div>
+
+<script src="js/icons.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/login.js"></script>
+</body>
+</html>

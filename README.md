@@ -1,8 +1,15 @@
-# Safety Rounds · versión 2.0
+# Safety Rounds · versión 2.1
 
 Aplicación web para la gestión de cuestionarios, inspecciones y desviaciones de un
-departamento de **Safety & Health**. Funciona sin conexión, se instala en el móvil
-como una app y no necesita servidor de aplicaciones ni base de datos.
+departamento de **Safety & Health**. Funciona sin conexión y se instala en el móvil
+como una app: las inspecciones se guardan en el dispositivo, igual que siempre.
+
+Desde la versión 2.1 hay además un pequeño servidor Node + PostgreSQL (pensado
+para Railway) que añade dos cosas que no se pueden hacer solo con el dispositivo:
+**enlaces para compartir el informe de una visita** y un **panel de accesos** con
+usuarios de prueba para ver quién entra y cuánto tiempo está conectado. Todo lo
+demás —cuestionarios, visitas, desviaciones, plan de acción— sigue funcionando
+exactamente igual y sigue viviendo en el dispositivo. Ver el punto 10.
 
 ---
 
@@ -54,6 +61,9 @@ conexión se actualizará sola.
 ## 1. Puesta en marcha
 
 La aplicación es HTML, CSS y JavaScript estáticos. **No hay que compilar nada.**
+Las opciones A, B y C sirven solo la aplicación clásica: cuestionarios, visitas,
+desviaciones… todo en el dispositivo. Si además quieres **enlaces para compartir
+informes** y el **panel de accesos**, salta directamente al punto 10 (Railway).
 
 ### Opción A — Netlify o Vercel (recomendado, gratis, 2 minutos)
 
@@ -191,9 +201,10 @@ en *Ajustes del cuestionario → Correos destinatarios*.
 
 ## 6. Dónde se guardan los datos
 
-Todo se guarda en el navegador del dispositivo, en **IndexedDB** (con reserva
-automática a `localStorage` si el navegador la bloquea). Eso es lo que permite
-trabajar sin cobertura, pero implica dos cosas importantes:
+Los cuestionarios, visitas, desviaciones y el plan de acción se guardan en el
+navegador del dispositivo, en **IndexedDB** (con reserva automática a
+`localStorage` si el navegador la bloquea). Eso es lo que permite trabajar sin
+cobertura, pero implica dos cosas importantes:
 
 1. **Los datos no se comparten entre dispositivos.** Cada móvil, tablet u ordenador
    tiene su propia base.
@@ -213,6 +224,12 @@ Cada visita guarda además una copia de la plantilla tal y como estaba al realiz
 Ocupa algo más, pero garantiza que **una inspección antigua nunca se rompe ni cambia
 de sentido** aunque después edites o borres el cuestionario.
 
+> Cuando se usa el servidor de Railway (punto 10), lo único que sale del
+> dispositivo es lo que decides compartir: el informe puntual de una visita, al
+> pulsar «Compartir enlace». Ese informe se guarda en PostgreSQL para que el
+> enlace funcione desde cualquier sitio. El resto de datos de trabajo sigue
+> siendo solo del dispositivo, igual que siempre.
+
 ---
 
 ## 7. Estructura de archivos
@@ -220,8 +237,14 @@ de sentido** aunque después edites o borres el cuestionario.
 ```
 safety-rounds/
 ├── index.html              Esqueleto de la aplicación
+├── login.html              Inicio de sesión
+├── admin.html              Panel de accesos (usuarios ficticios y sesiones)
+├── report.html             Visor del informe compartido (/r/<id>)
 ├── manifest.webmanifest    Metadatos de instalación (PWA)
 ├── sw.js                   Service worker: funcionamiento sin conexión
+├── package.json            Dependencias del servidor (solo para Railway/Node)
+├── railway.json            Configuración de build/deploy en Railway
+├── .env.example            Variables de entorno de ejemplo
 ├── README.md
 ├── css/
 │   └── app.css             Sistema de diseño completo
@@ -236,15 +259,31 @@ safety-rounds/
 │   ├── dashboard.js        Indicadores y gráficos
 │   ├── lists.js            Cuestionarios, visitas, desviaciones y acciones
 │   ├── settings.js         Ajustes, tipologías y copias de seguridad
+│   ├── share.js            Genera el enlace compartido de una visita
+│   ├── auth.js             Sesión dentro de la aplicación (latido, cierre de sesión)
+│   ├── login.js            Lógica de login.html
+│   ├── admin.js            Lógica de admin.html
+│   ├── report-viewer.js    Lógica de report.html
 │   └── app.js              Navegación y arranque
 ├── vendor/
 │   └── jspdf.umd.min.js    Generación de PDF (única dependencia externa)
-└── icons/                  Iconos de la aplicación instalada
+├── icons/                  Iconos de la aplicación instalada
+└── server/                 Servidor Node (enlaces compartidos y accesos)
+    ├── index.js            Punto de entrada: estáticos + API
+    ├── db.js               Conexión a PostgreSQL y esquema
+    ├── auth.js             Sesiones, contraseñas y permisos
+    ├── seed.js             Administrador real + usuarios ficticios de prueba
+    └── routes/
+        ├── auth.js         Login, logout, latido de conexión
+        ├── admin.js        Usuarios y sesiones para el panel de accesos
+        └── share.js        Crear y leer enlaces compartidos
 ```
 
-Sin `npm install`, sin proceso de compilación y sin llamadas a servicios externos:
-lo único que se descarga de fuera es la tipografía Space Grotesk de Google Fonts, y
-si no hay conexión el navegador usa la tipografía del sistema sin romper nada.
+La aplicación en sí (`index.html`, `css/`, `js/`, `vendor/`, `icons/`) sigue sin
+compilación ni dependencias: lo único externo es la tipografía Space Grotesk de
+Google Fonts, y sin conexión el navegador usa la tipografía del sistema sin
+romper nada. El servidor de `server/` es lo único que necesita `npm install`,
+y solo hace falta si vas a desplegar en Railway (punto 10).
 
 ---
 
@@ -285,3 +324,93 @@ después puedes borrar con *Borrar visitas y desviaciones*.
 Chrome, Edge, Safari y Firefox en sus versiones actuales, tanto en escritorio como en
 móvil. La firma táctil, la cámara y la instalación como aplicación requieren un
 navegador moderno y HTTPS.
+
+---
+
+## 10. Railway: enlaces compartidos y panel de accesos
+
+Esta parte es opcional. Si solo quieres la aplicación de siempre, quédate en el
+punto 1. Si además quieres que se pueda **compartir el enlace de una visita
+realizada** y llevar un **registro de quién entra y cuánto tiempo está
+conectado**, sigue estos pasos en tu proyecto de Railway.
+
+### 10.1 Añadir PostgreSQL
+
+1. En el proyecto de Railway, **New → Database → Add PostgreSQL**.
+2. No hay que hacer nada más: Railway inyecta sola la variable `DATABASE_URL`
+   en el servicio de la aplicación. Este servidor crea las tablas que necesita
+   solo, al arrancar (no hay migraciones que ejecutar a mano).
+3. Si el servicio de la aplicación ya estaba desplegado, Railway lo reinicia
+   solo al detectar la nueva variable; si no, vuelve a desplegar.
+
+### 10.2 Variables de entorno
+
+En el servicio de la aplicación, pestaña **Variables**:
+
+| Variable | Para qué sirve | Obligatoria |
+|---|---|---|
+| `DATABASE_URL` | La inyecta Railway al añadir PostgreSQL. | Sí (la pone Railway) |
+| `ADMIN_EMAIL` | Usuario del administrador real. Por defecto `mou5nch@gmail.com`. | No |
+| `ADMIN_PASSWORD` | Contraseña de ese administrador. Si no la defines, el servidor genera una al azar en el primer arranque **y la escribe una sola vez en los logs de Railway** (pestaña *Deployments → View logs*): apúntala ahí. | Recomendable |
+| `SEED_USERS_PASSWORD` | Contraseña compartida por los usuarios ficticios de prueba (por defecto `Rondas2026!`). | No |
+| `NODE_ENV` | Ponla a `production`; hace que la cookie de sesión exija HTTPS. | Recomendable |
+
+Con `package.json` y `railway.json` ya en el repositorio, Railway detecta que
+ahora hay un servidor Node y pasa a ejecutar `npm install` + `npm start` en vez
+de servir los archivos como sitio estático: no hace falta tocar nada más en la
+configuración de build.
+
+### 10.3 Iniciar sesión
+
+Al abrir la aplicación pedirá usuario y contraseña. Cuentas disponibles nada
+más desplegar:
+
+- **`mou5nch@gmail.com`** (o el valor de `ADMIN_EMAIL`) — administrador real,
+  con acceso al panel de accesos. Contraseña: la que hayas puesto en
+  `ADMIN_PASSWORD`, o la generada automáticamente (mira los logs).
+- **`ana.garcia`**, **`carlos.ruiz`**, **`maria.lopez`** — usuarios ficticios
+  de prueba, misma contraseña para los tres (`SEED_USERS_PASSWORD`, por
+  defecto `Rondas2026!`). Sirven para ver cómo queda el registro de accesos
+  sin comprometer una cuenta real.
+
+Desde el panel de accesos (menú **Panel de accesos**, solo visible para el
+administrador) se pueden crear más usuarios ficticios o borrar los que sobren.
+
+### 10.4 Cómo se sigue el acceso
+
+Cada inicio de sesión abre una fila en el registro de sesiones con la hora de
+entrada. Mientras la aplicación sigue abierta manda un latido cada minuto, así
+que el panel sabe si alguien sigue conectado o si la pestaña se cerró sin
+avisar (más de 3 minutos sin latido = desconectado). Al pulsar «Cerrar
+sesión» se cierra al momento. El panel muestra, por usuario, el número de
+sesiones, la última conexión y el tiempo total conectado.
+
+### 10.5 Compartir una visita
+
+En **Visitas realizadas**, cualquier visita finalizada tiene un botón
+**Compartir enlace** junto a los de PDF y correo. Al pulsarlo:
+
+1. La aplicación arma una instantánea de la visita (respuestas, desviaciones,
+   fotos, firmas…) con los nombres de tipología ya resueltos —quien abra el
+   enlace no tiene tu IndexedDB, así que no puede resolverlos por su cuenta.
+2. La sube al servidor, que le asigna un identificador corto y la guarda en
+   PostgreSQL.
+3. Aparece un enlace del tipo `https://tu-app.up.railway.app/r/AbCdEf1234`,
+   listo para copiar o abrir.
+
+Cualquiera con ese enlace ve el informe en una página de solo lectura, sin
+necesidad de instalar la aplicación ni tener cuenta. El enlace no caduca por sí
+solo; si quieres retirarlo, bórralo con una petición
+`DELETE /api/share/<id>` (solo puede hacerlo quien lo creó, o un
+administrador).
+
+### 10.6 Si no añades PostgreSQL
+
+Importante: en cuanto despliegas con `package.json` (es decir, en cuanto
+Railway pasa a ejecutar este servidor), la aplicación empieza a pedir inicio
+de sesión, y eso necesita base de datos. Sin `DATABASE_URL` el servidor arranca
+igualmente y sirve los archivos estáticos, pero nadie puede pasar de la
+pantalla de login: añade el plugin PostgreSQL (10.1) antes de dar la URL a
+nadie. Si lo que quieres es la aplicación de siempre sin ningún inicio de
+sesión, despliega sin `package.json`/`server/` (opciones A-C del punto 1) en
+vez de en este servidor.

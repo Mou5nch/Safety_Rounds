@@ -22,6 +22,16 @@
 </head>
 <body>
 
+<script>
+// Guardia de sesión: sin usuario en caché, no hay nada que mostrar todavía.
+// Se comprueba con el servidor (y se manda el latido de conexión) desde js/auth.js.
+(function () {
+  try {
+    if (!localStorage.getItem('sr:auth')) location.replace('login.html');
+  } catch (e) { /* almacenamiento bloqueado: se deja pasar, store.js ya avisa */ }
+})();
+</script>
+
 <div class="app">
 
   <!-- ===================== Sidebar ===================== -->
@@ -76,9 +86,19 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
         Ajustes y datos
       </button>
+      <a class="nav__item" id="navAdmin" href="admin.html" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Panel de accesos
+      </a>
     </nav>
 
     <div class="sidebar__foot">
+      <div class="session-user" id="sessionUser" hidden>
+        <span class="session-user__name" id="sessionUserName"></span>
+        <button class="btn btn--quiet btn--sm btn--icon" id="sessionLogout" title="Cerrar sesión">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+        </button>
+      </div>
       <div class="storage">
         <div class="storage__row">
           <span>Almacenamiento</span>
@@ -124,6 +144,8 @@
 <script src="js/dashboard.js"></script>
 <script src="js/lists.js"></script>
 <script src="js/settings.js"></script>
+<script src="js/share.js"></script>
+<script src="js/auth.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

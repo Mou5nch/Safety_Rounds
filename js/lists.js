@@ -455,6 +455,10 @@
         class: 'btn btn--ghost btn--sm btn--icon', title: 'Enviar por correo', html: ico('mail', 15),
         onclick: function () { PDF.sendByEmail(v.id); }
       }));
+      actions.appendChild(el('button', {
+        class: 'btn btn--ghost btn--sm btn--icon', title: 'Compartir enlace', html: ico('send', 15),
+        onclick: function () { Share.visit(v); }
+      }));
     }
     actions.appendChild(el('button', {
       class: 'btn btn--ghost btn--sm btn--icon', title: done ? 'Editar visita' : 'Continuar', html: ico(done ? 'edit' : 'play', 15),
