@@ -27,30 +27,41 @@
       <span>Safety Rounds</span>
     </div>
 
-    <h1 class="auth-card__title">Iniciar sesión</h1>
-    <p class="hint">Acceso con las cuentas de prueba del departamento. Cada inicio y cierre de sesión queda registrado en el panel de accesos.</p>
+    <div id="loginView">
+      <h1 class="auth-card__title">Iniciar sesión</h1>
+      <p class="hint">Acceso con las cuentas de prueba del departamento. Cada inicio y cierre de sesión queda registrado en el panel de accesos.</p>
 
-    <form id="loginForm" class="auth-form" autocomplete="on">
-      <div class="field">
-        <label class="label" for="fUser">Usuario</label>
-        <input class="input" id="fUser" name="username" autocomplete="username" required>
-      </div>
-      <div class="field">
-        <label class="label" for="fPass">Contraseña</label>
-        <input class="input" id="fPass" name="password" type="password" autocomplete="current-password" required>
-      </div>
-      <div class="auth-error" id="loginError" hidden></div>
-      <button class="btn btn--primary btn--block" type="submit" id="loginBtn">Entrar</button>
-    </form>
+      <form id="loginForm" class="auth-form" autocomplete="on">
+        <div class="field">
+          <label class="label" for="fUser">Usuario</label>
+          <input class="input" id="fUser" name="username" autocomplete="username" required>
+        </div>
+        <div class="field">
+          <label class="label" for="fPass">Contraseña</label>
+          <input class="input" id="fPass" name="password" type="password" autocomplete="current-password" required>
+        </div>
+        <div class="auth-error" id="loginError" hidden></div>
+        <button class="btn btn--primary btn--block" type="submit" id="loginBtn">Entrar</button>
+      </form>
 
-    <button class="auth-forgot" id="forgotToggle" type="button">¿Has olvidado tu contraseña?</button>
-    <div class="auth-recover" id="forgotPanel" hidden>
-      <p><strong>Si eres la administradora o administrador</strong> (la cuenta con rol de administración):
-      recupera el acceso definiendo o cambiando <code>ADMIN_PASSWORD</code> en las variables de entorno de
-      Railway y volviendo a desplegar. La contraseña se sincroniza sola en el siguiente arranque.</p>
-      <p><strong>Si eres otro usuario</strong> (una cuenta ficticia de prueba u otra que te haya dado el
-      administrador): pídele que te restablezca la contraseña desde el <em>Panel de accesos</em> — genera una
-      nueva al momento, sin necesidad de correo.</p>
+      <button class="auth-forgot" id="forgotToggle" type="button">¿Has olvidado tu contraseña?</button>
+    </div>
+
+    <div id="forgotView" hidden>
+      <h1 class="auth-card__title">Recuperar contraseña</h1>
+      <p class="hint">Indica tu usuario o correo y, si tiene una dirección de correo asociada, te enviaremos un enlace para elegir una contraseña nueva.</p>
+
+      <form id="forgotForm" class="auth-form" autocomplete="on">
+        <div class="field">
+          <label class="label" for="fForgotUser">Usuario o correo</label>
+          <input class="input" id="fForgotUser" name="username" autocomplete="username" required>
+        </div>
+        <div class="auth-error" id="forgotError" hidden></div>
+        <div class="auth-success" id="forgotSuccess" hidden></div>
+        <button class="btn btn--primary btn--block" type="submit" id="forgotBtn">Enviar enlace</button>
+      </form>
+
+      <button class="auth-forgot" id="backToLogin" type="button">Volver a iniciar sesión</button>
     </div>
   </div>
 </div>

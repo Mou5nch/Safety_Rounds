@@ -10,11 +10,55 @@
   var errEl = document.getElementById('loginError');
   var btn = document.getElementById('loginBtn');
 
+  var loginView = document.getElementById('loginView');
+  var forgotView = document.getElementById('forgotView');
   var forgotToggle = document.getElementById('forgotToggle');
-  var forgotPanel = document.getElementById('forgotPanel');
-  if (forgotToggle) {
-    forgotToggle.addEventListener('click', function () {
-      forgotPanel.hidden = !forgotPanel.hidden;
+  var backToLogin = document.getElementById('backToLogin');
+  var forgotForm = document.getElementById('forgotForm');
+  var forgotUserEl = document.getElementById('fForgotUser');
+  var forgotErrEl = document.getElementById('forgotError');
+  var forgotOkEl = document.getElementById('forgotSuccess');
+  var forgotBtn = document.getElementById('forgotBtn');
+
+  function showForgot(show) {
+    loginView.hidden = show;
+    forgotView.hidden = !show;
+    forgotErrEl.hidden = true;
+    forgotOkEl.hidden = true;
+    if (show) forgotUserEl.focus();
+  }
+  if (forgotToggle) forgotToggle.addEventListener('click', function () { showForgot(true); });
+  if (backToLogin) backToLogin.addEventListener('click', function () { showForgot(false); });
+
+  if (forgotForm) {
+    forgotForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      forgotErrEl.hidden = true;
+      forgotOkEl.hidden = true;
+      forgotBtn.disabled = true;
+
+      fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ username: forgotUserEl.value.trim() })
+      }).then(function (res) {
+        return res.json().catch(function () { return {}; }).then(function (data) { return { ok: res.ok, data: data }; });
+      }).then(function (r) {
+        forgotBtn.disabled = false;
+        if (!r.ok) {
+          forgotErrEl.textContent = (r.data && r.data.error) || 'No se ha podido procesar la petición.';
+          forgotErrEl.hidden = false;
+          return;
+        }
+        forgotOkEl.textContent = r.data.message || 'Si esa cuenta existe, te hemos enviado un enlace por correo.';
+        forgotOkEl.hidden = false;
+        forgotForm.reset();
+      }).catch(function () {
+        forgotBtn.disabled = false;
+        forgotErrEl.textContent = 'No se ha podido conectar con el servidor. Comprueba tu conexión.';
+        forgotErrEl.hidden = false;
+      });
     });
   }
 

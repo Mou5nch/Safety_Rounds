@@ -105,7 +105,10 @@
       var tbody = el('tbody');
       users.forEach(function (u) {
         tbody.appendChild(el('tr', {}, [
-          el('td', {}, [el('div', { text: u.name }), el('div', { class: 'hint', style: { margin: 0 }, text: '@' + u.username })]),
+          el('td', {}, [
+            el('div', { text: u.name }),
+            el('div', { class: 'hint', style: { margin: 0 }, text: '@' + u.username + (u.email ? ' · ' + u.email : ' · sin correo (recuperación solo por el admin)') })
+          ]),
           el('td', {}, el('span', { class: 'tag tag--navy', text: roleLabel(u.role) })),
           el('td', {}, el('span', {
             class: 'tag ' + (activeByUser[u.username] ? 'tag--ok' : ''), text: activeByUser[u.username] ? 'Conectado' : 'Sin conexión'
@@ -173,6 +176,7 @@
   function openCreateModal() {
     var userEl = el('input', { class: 'input', placeholder: 'p. ej. jorge.diaz' });
     var nameEl = el('input', { class: 'input', placeholder: 'Nombre completo' });
+    var emailEl = el('input', { class: 'input', type: 'email', placeholder: 'jorge.diaz@empresa.com' });
     var passEl = el('input', { class: 'input', type: 'text', placeholder: 'Contraseña' });
     var roleEl = el('select', { class: 'select' }, [
       el('option', { value: 'inspector', text: 'Inspector' }),
@@ -183,6 +187,7 @@
     var body = el('div', {}, [
       UI.field('Usuario', userEl),
       UI.field('Nombre', nameEl),
+      UI.field('Correo (opcional)', emailEl, 'Si lo indicas, esta cuenta podrá usar «¿Has olvidado tu contraseña?» en el login.'),
       UI.field('Rol', roleEl),
       UI.field('Contraseña', passEl, 'Compártela con quien vaya a usar esta cuenta de prueba.')
     ]);
@@ -197,7 +202,7 @@
           label: 'Crear usuario', kind: 'primary', icon: 'plus',
           onClick: function () {
             var payload = {
-              username: userEl.value.trim(), name: nameEl.value.trim(),
+              username: userEl.value.trim(), name: nameEl.value.trim(), email: emailEl.value.trim(),
               role: roleEl.value, password: passEl.value
             };
             if (!payload.username || !payload.name || !payload.password) {

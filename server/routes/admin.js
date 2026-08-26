@@ -21,7 +21,7 @@ const ACTIVE_WINDOW = "interval '3 minutes'";
 router.get('/users', requireAdmin, async function (req, res) {
   try {
     const { rows } = await pool.query(`
-      SELECT u.id, u.username, u.name, u.role, u.fictitious, u.created_at,
+      SELECT u.id, u.username, u.name, u.role, u.fictitious, u.email, u.created_at,
              COUNT(s.id)::int AS session_count,
              MAX(s.last_seen_at) AS last_seen_at,
              COALESCE(SUM(EXTRACT(EPOCH FROM (COALESCE(s.logout_at, s.last_seen_at) - s.login_at))), 0)::float AS total_seconds
@@ -61,6 +61,7 @@ router.post('/users', requireAdmin, async function (req, res) {
   const role = ['admin', 'supervisor', 'inspector'].indexOf(req.body && req.body.role) !== -1
     ? req.body.role : 'inspector';
   const password = String((req.body && req.body.password) || '');
+  const email = String((req.body && req.body.email) || '').trim().toLowerCase() || null;
 
   if (!username || !name || !password) {
     return res.status(400).json({ error: 'Indica usuario, nombre y contraseña.' });
@@ -69,9 +70,9 @@ router.post('/users', requireAdmin, async function (req, res) {
   try {
     const hash = await bcrypt.hash(password, 10);
     const { rows } = await pool.query(
-      `INSERT INTO users (username, name, role, password_hash, fictitious)
-       VALUES ($1, $2, $3, $4, TRUE) RETURNING id, username, name, role, fictitious, created_at`,
-      [username, name, role, hash]
+      `INSERT INTO users (username, name, role, password_hash, fictitious, email)
+       VALUES ($1, $2, $3, $4, TRUE, $5) RETURNING id, username, name, role, fictitious, email, created_at`,
+      [username, name, role, hash, email]
     );
     res.status(201).json(rows[0]);
   } catch (e) {

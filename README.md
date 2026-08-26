@@ -240,6 +240,7 @@ safety-rounds/
 ├── login.html              Inicio de sesión
 ├── admin.html              Panel de accesos (usuarios ficticios y sesiones)
 ├── report.html             Visor del informe compartido (/r/<id>)
+├── reset-password.html     Elegir contraseña nueva desde el enlace del correo
 ├── manifest.webmanifest    Metadatos de instalación (PWA)
 ├── sw.js                   Service worker: funcionamiento sin conexión
 ├── package.json            Dependencias del servidor (solo para Railway/Node)
@@ -264,6 +265,7 @@ safety-rounds/
 │   ├── login.js            Lógica de login.html
 │   ├── admin.js            Lógica de admin.html
 │   ├── report-viewer.js    Lógica de report.html
+│   ├── reset-password.js   Lógica de reset-password.html
 │   └── app.js              Navegación y arranque
 ├── vendor/
 │   └── jspdf.umd.min.js    Generación de PDF (única dependencia externa)
@@ -272,9 +274,10 @@ safety-rounds/
     ├── index.js            Punto de entrada: estáticos + API
     ├── db.js               Conexión a PostgreSQL y esquema
     ├── auth.js             Sesiones, contraseñas y permisos
+    ├── mail.js             Envío del correo de recuperación (SMTP)
     ├── seed.js             Administrador real + usuarios ficticios de prueba
     └── routes/
-        ├── auth.js         Login, logout, latido de conexión
+        ├── auth.js         Login, logout, latido de conexión, recuperación de contraseña
         ├── admin.js        Usuarios y sesiones para el panel de accesos
         └── share.js        Crear y leer enlaces compartidos
 ```
@@ -350,15 +353,33 @@ En el servicio de la aplicación, pestaña **Variables**:
 | Variable | Para qué sirve | Obligatoria |
 |---|---|---|
 | `DATABASE_URL` | La inyecta Railway al añadir PostgreSQL. | Sí (la pone Railway) |
-| `ADMIN_EMAIL` | Usuario del administrador real. Por defecto `mou5nch@gmail.com`. | No |
+| `ADMIN_EMAIL` | Usuario (y correo) del administrador real. Por defecto `mou5nch@gmail.com`. | No |
 | `ADMIN_PASSWORD` | Contraseña de ese administrador. Si no la defines, el servidor genera una al azar en el primer arranque **y la escribe una sola vez en los logs de Railway** (pestaña *Deployments → View logs*): apúntala ahí. | Recomendable |
 | `SEED_USERS_PASSWORD` | Contraseña compartida por los usuarios ficticios de prueba (por defecto `Rondas2026!`). | No |
 | `NODE_ENV` | Ponla a `production`; hace que la cookie de sesión exija HTTPS. | Recomendable |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` | Servidor de correo para enviar los enlaces de «Recuperar contraseña». Sin esto, esa opción no envía nada (ver 10.3). | Recomendable |
+| `SMTP_SECURE` | Ponla a `true` solo si tu proveedor usa SSL directo (normalmente el puerto 465). Con el 587 habitual, déjala sin definir. | No |
+| `MAIL_FROM` | Dirección que aparece como remitente. Si no la defines, se usa `SMTP_USER`. | No |
 
 Con `package.json` y `railway.json` ya en el repositorio, Railway detecta que
 ahora hay un servidor Node y pasa a ejecutar `npm install` + `npm start` en vez
 de servir los archivos como sitio estático: no hace falta tocar nada más en la
 configuración de build.
+
+**Configurar el correo con Gmail** (la vía más rápida, ya que `mou5nch@gmail.com`
+es una cuenta de Gmail):
+
+1. Activa la verificación en dos pasos en esa cuenta de Google, si no la tienes ya.
+2. Ve a [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords)
+   y crea una «contraseña de aplicación» (no uses la contraseña normal de la cuenta).
+3. En Railway, define:
+   - `SMTP_HOST` = `smtp.gmail.com`
+   - `SMTP_PORT` = `587`
+   - `SMTP_USER` = `mou5nch@gmail.com`
+   - `SMTP_PASS` = la contraseña de aplicación de 16 caracteres que te dio Google
+
+Cualquier otro proveedor (Resend, SendGrid, Mailgun, Amazon SES…) también vale:
+solo hace falta su host, puerto y credenciales SMTP en las mismas variables.
 
 ### 10.3 Iniciar sesión
 
@@ -377,16 +398,24 @@ Desde el panel de accesos (menú **Panel de accesos**, solo visible para el
 administrador) se pueden crear más usuarios ficticios, restablecerles la
 contraseña o borrar los que sobren.
 
-**¿Y si alguien olvida la contraseña?** No hay correo configurado en la
-aplicación, así que la recuperación va por dos vías (también explicadas en el
-propio `login.html`, tras el enlace *¿Has olvidado tu contraseña?*):
+**¿Y si alguien olvida la contraseña?** En `login.html` hay un enlace
+*¿Has olvidado tu contraseña?*: se pide el usuario o correo y, si esa cuenta
+tiene una dirección de correo asociada, se envía un enlace de un solo uso
+(caduca en 1 hora) para elegir una contraseña nueva en `reset-password.html`.
+Para que esto funcione hace falta tener configuradas las variables SMTP de
+más arriba; si no lo están, la petición no da error (por seguridad, la
+respuesta es la misma exista o no la cuenta) pero no se envía nada — el
+servidor deja constancia en los logs de Railway.
 
-- **El administrador real** recupera el acceso definiendo o cambiando
-  `ADMIN_PASSWORD` en las variables de entorno de Railway y volviendo a
-  desplegar: la contraseña se sincroniza sola en el arranque siguiente.
-- **Cualquier otro usuario** pide al administrador que le restablezca la
-  contraseña desde el panel de accesos (botón ↻ junto a cada usuario): genera
-  una nueva al azar al momento, para copiarla y pasársela por un canal seguro.
+El administrador real ya tiene correo por defecto (su propio usuario). Para
+que un usuario ficticio también pueda recuperar su contraseña por este medio,
+indícale un correo al crearlo desde el panel de accesos; si no tiene uno
+asociado, la única vía es que el administrador se lo restablezca a mano
+(botón ↻ junto a cada usuario en el panel), que genera una contraseña al azar
+para copiarla y pasársela por un canal seguro. Como último recurso —por
+ejemplo si el correo del administrador deja de funcionar—, cambiar
+`ADMIN_PASSWORD` en Railway y volver a desplegar también recupera el acceso:
+la contraseña se sincroniza sola en el arranque siguiente.
 
 ### 10.4 Cómo se sigue el acceso
 
