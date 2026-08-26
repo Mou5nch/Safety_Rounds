@@ -7,7 +7,7 @@
 // Al subir este nombre, la activación borra las cachés anteriores: es lo que
 // hace que quien tenga la aplicación instalada reciba de verdad la versión
 // nueva en lugar de seguir con los archivos guardados de la anterior.
-var CACHE = 'safety-rounds-v3';
+var CACHE = 'safety-rounds-v4';
 
 var ASSETS = [
   './',
@@ -15,6 +15,7 @@ var ASSETS = [
   'login.html',
   'admin.html',
   'report.html',
+  'reset-password.html',
   'manifest.webmanifest',
   'css/app.css',
   'js/icons.js',
@@ -32,6 +33,7 @@ var ASSETS = [
   'js/login.js',
   'js/admin.js',
   'js/report-viewer.js',
+  'js/reset-password.js',
   'js/app.js',
   'vendor/jspdf.umd.min.js',
   'icons/favicon.svg',

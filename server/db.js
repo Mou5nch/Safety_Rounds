@@ -33,8 +33,18 @@ async function initSchema() {
       role TEXT NOT NULL DEFAULT 'inspector',
       password_hash TEXT NOT NULL,
       fictitious BOOLEAN NOT NULL DEFAULT TRUE,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      email TEXT
     );
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS email TEXT;
+
+    CREATE TABLE IF NOT EXISTS password_resets (
+      token TEXT PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      expires_at TIMESTAMPTZ NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS password_resets_user_id_idx ON password_resets(user_id);
 
     CREATE TABLE IF NOT EXISTS sessions (
       id TEXT PRIMARY KEY,

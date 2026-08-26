@@ -26,7 +26,7 @@ const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'mou5nch@gmail.com').trim().toLo
 const ADMIN_NAME = process.env.ADMIN_NAME || 'Administrador';
 
 async function ensureRealAdmin() {
-  const { rows } = await pool.query('SELECT id, password_hash FROM users WHERE username = $1', [ADMIN_EMAIL]);
+  const { rows } = await pool.query('SELECT id, password_hash, email FROM users WHERE username = $1', [ADMIN_EMAIL]);
 
   if (rows.length) {
     // Ya existe: esta es la vía de recuperación si te quedas fuera. Define
@@ -40,6 +40,11 @@ async function ensureRealAdmin() {
         console.log('[seed] Contraseña de ' + ADMIN_EMAIL + ' actualizada desde ADMIN_PASSWORD.');
       }
     }
+    // Cuentas creadas antes de que existiera la columna email: se rellena
+    // sola, ya que aquí el usuario y el correo son el mismo valor.
+    if (!rows[0].email) {
+      await pool.query('UPDATE users SET email = $1 WHERE id = $2', [ADMIN_EMAIL, rows[0].id]);
+    }
     return;
   }
 
@@ -48,7 +53,7 @@ async function ensureRealAdmin() {
   const hash = await hashPassword(password);
 
   await pool.query(
-    `INSERT INTO users (username, name, role, password_hash, fictitious) VALUES ($1, $2, 'admin', $3, FALSE)`,
+    `INSERT INTO users (username, name, role, password_hash, fictitious, email) VALUES ($1, $2, 'admin', $3, FALSE, $1)`,
     [ADMIN_EMAIL, ADMIN_NAME, hash]
   );
 
