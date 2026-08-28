@@ -38,7 +38,10 @@
         </div>
         <div class="field">
           <label class="label" for="fPass">Contraseña</label>
-          <input class="input" id="fPass" name="password" type="password" autocomplete="current-password" required>
+          <div class="password-field">
+            <input class="input" id="fPass" name="password" type="password" autocomplete="current-password" required>
+            <button class="password-toggle" type="button" id="fPassToggle" aria-label="Mostrar contraseña"></button>
+          </div>
         </div>
         <div class="auth-error" id="loginError" hidden></div>
         <button class="btn btn--primary btn--block" type="submit" id="loginBtn">Entrar</button>

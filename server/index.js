@@ -11,7 +11,7 @@
 const path = require('path');
 const express = require('express');
 const cookieParser = require('cookie-parser');
-const { initSchema } = require('./db');
+const { pool, initSchema } = require('./db');
 const { seedUsers } = require('./seed');
 const { attachUser } = require('./auth');
 
@@ -33,6 +33,22 @@ app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/share', shareRoutes);
 
+// Diagnóstico rápido de la conexión a Postgres: abre esta URL en el
+// navegador para saber, sin mirar logs, si la base de datos responde.
+// No expone credenciales; solo si conecta o no y, si falla, el motivo.
+app.get('/api/health', async function (req, res) {
+  if (!process.env.DATABASE_URL) {
+    return res.status(503).json({ db: 'error', reason: 'DATABASE_URL no está definida en este servicio.' });
+  }
+  try {
+    await pool.query('SELECT 1');
+    const { rows } = await pool.query('SELECT COUNT(*)::int AS n FROM users').catch(function () { return { rows: [{ n: null }] }; });
+    res.json({ db: 'ok', users: rows[0].n });
+  } catch (e) {
+    res.status(503).json({ db: 'error', reason: e.message, code: e.code || null });
+  }
+});
+
 // Enlace amigable /r/<id> → sirve la página que llama a /api/share/:id
 app.get('/r/:id', function (req, res) {
   res.sendFile(path.join(ROOT, 'report.html'));
@@ -49,8 +65,9 @@ async function start() {
     await initSchema();
     await seedUsers();
   } catch (e) {
-    console.error('[server] no se ha podido preparar la base de datos:', e.message);
-    console.error('[server] revisa que el plugin PostgreSQL esté añadido al proyecto de Railway.');
+    console.error('[server] no se ha podido preparar la base de datos.');
+    console.error('[server] mensaje: ' + e.message + (e.code ? ' (código: ' + e.code + ')' : ''));
+    console.error('[server] revisa que el plugin PostgreSQL esté añadido y que DATABASE_URL apunte a él (no al valor de ejemplo de .env.example).');
   }
   app.listen(PORT, function () {
     console.log('[server] Safety Rounds escuchando en el puerto ' + PORT);
