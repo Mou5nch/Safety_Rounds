@@ -22,6 +22,25 @@
   var errEl = document.getElementById('resetError');
   var btn = document.getElementById('resetBtn');
 
+  function wirePasswordToggle(inputId, buttonId) {
+    var input = document.getElementById(inputId);
+    var toggleBtn = document.getElementById(buttonId);
+    if (!input || !toggleBtn) return;
+    var shown = false;
+    function paint() {
+      toggleBtn.innerHTML = ico(shown ? 'eyeOff' : 'eye', 17);
+      toggleBtn.setAttribute('aria-label', shown ? 'Ocultar contraseña' : 'Mostrar contraseña');
+    }
+    toggleBtn.addEventListener('click', function () {
+      shown = !shown;
+      input.type = shown ? 'text' : 'password';
+      paint();
+    });
+    paint();
+  }
+  wirePasswordToggle('fPass1', 'fPass1Toggle');
+  wirePasswordToggle('fPass2', 'fPass2Toggle');
+
   function showError(msg) {
     errEl.textContent = msg;
     errEl.hidden = false;

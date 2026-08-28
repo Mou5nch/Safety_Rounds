@@ -13,11 +13,31 @@ if (!process.env.DATABASE_URL) {
     '[db] No hay DATABASE_URL configurada. Añade el plugin PostgreSQL en el ' +
     'proyecto de Railway: la variable se inyecta sola y solo hace falta volver a desplegar.'
   );
+} else if (process.env.DATABASE_URL.indexOf('${{') !== -1) {
+  console.warn(
+    '[db] DATABASE_URL contiene "${{...}}" sin resolver: eso es una referencia de Railway ' +
+    '(válida solo dentro de Railway) o quedó copiada literal de .env.example. ' +
+    'En local, sustitúyela por una URL real; en Railway, revisa que el nombre del servicio ' +
+    'de Postgres en la referencia coincida con el que aparece en tu proyecto.'
+  );
+} else {
+  // Nunca se registra la contraseña: solo host/puerto/base, para poder
+  // comprobar en los logs de Railway a qué Postgres se está intentando
+  // conectar sin exponer credenciales.
+  try {
+    var u = new URL(process.env.DATABASE_URL);
+    console.log('[db] Conectando a ' + u.hostname + ':' + (u.port || '5432') + u.pathname + ' (SSL: ' + (process.env.PGSSL === 'true' ? 'sí' : 'no') + ')');
+  } catch (e) { /* URL rara: se deja que pg dé su propio error más abajo */ }
 }
 
+// La URL interna que Railway da entre servicios del mismo proyecto
+// (host *.railway.internal) no habla SSL: forzarlo ahí hace que la conexión
+// falle. Por eso aquí SSL está desactivado por defecto, y solo se activa si
+// se define PGSSL=true (por ejemplo, para conectar a un Postgres externo
+// como Supabase, que si lo exige).
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.PGSSL === 'false' ? false : { rejectUnauthorized: false }
+  ssl: process.env.PGSSL === 'true' ? { rejectUnauthorized: false } : false
 });
 
 pool.on('error', function (err) {

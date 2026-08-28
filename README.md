@@ -352,7 +352,8 @@ En el servicio de la aplicación, pestaña **Variables**:
 
 | Variable | Para qué sirve | Obligatoria |
 |---|---|---|
-| `DATABASE_URL` | La inyecta Railway al añadir PostgreSQL. | Sí (la pone Railway) |
+| `DATABASE_URL` | Conexión a Postgres. Ver aviso justo debajo — es la causa más habitual de que el login no funcione. | Sí |
+| `PGSSL` | Déjala sin definir (o en `false`): la URL interna de Railway entre servicios del mismo proyecto no usa SSL. Ponla a `true` solo si `DATABASE_URL` apunta a un Postgres externo (Supabase, RDS…) que sí lo exija. | No |
 | `ADMIN_EMAIL` | Usuario (y correo) del administrador real. Por defecto `mou5nch@gmail.com`. | No |
 | `ADMIN_PASSWORD` | Contraseña de ese administrador. Si no la defines, el servidor genera una al azar en el primer arranque **y la escribe una sola vez en los logs de Railway** (pestaña *Deployments → View logs*): apúntala ahí. | Recomendable |
 | `SEED_USERS_PASSWORD` | Contraseña compartida por los usuarios ficticios de prueba (por defecto `Rondas2026!`). | No |
@@ -365,6 +366,20 @@ Con `package.json` y `railway.json` ya en el repositorio, Railway detecta que
 ahora hay un servidor Node y pasa a ejecutar `npm install` + `npm start` en vez
 de servir los archivos como sitio estático: no hace falta tocar nada más en la
 configuración de build.
+
+> ⚠️ **El fallo más habitual: `DATABASE_URL` con el valor de ejemplo.**
+> Cuando Railway detecta variables en `.env.example`, las ofrece en una sección
+> **"Suggested Variables"** con sus valores *literales* del archivo — no una
+> conexión real. Si guardas `DATABASE_URL` tal cual (`postgres://usuario:contrasena@localhost…`),
+> el login y todo lo demás fallan siempre, por mucho que reintentes.
+> El valor correcto es una referencia al servicio de Postgres: haz clic en el
+> campo de `DATABASE_URL`, bórralo y escribe `${{Postgres.DATABASE_URL}}`
+> (al teclear `${{` Railway sugiere las variables de tus otros servicios;
+> elige Postgres → `DATABASE_URL`). Guarda y espera al reinicio automático.
+> Para comprobar que ha quedado bien sin bucear en los logs, abre
+> `https://tu-app.up.railway.app/api/health` en el navegador: debe responder
+> `{"db":"ok","users":N}`. Si da `{"db":"error","reason":"..."}`, ese mensaje
+> dice exactamente qué falla.
 
 **Configurar el correo con Gmail** (la vía más rápida, ya que `mou5nch@gmail.com`
 es una cuenta de Gmail):

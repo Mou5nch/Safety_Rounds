@@ -4,6 +4,24 @@
 (function () {
   'use strict';
 
+  function wirePasswordToggle(inputId, buttonId) {
+    var input = document.getElementById(inputId);
+    var btn = document.getElementById(buttonId);
+    if (!input || !btn) return;
+    var shown = false;
+    function paint() {
+      btn.innerHTML = ico(shown ? 'eyeOff' : 'eye', 17);
+      btn.setAttribute('aria-label', shown ? 'Ocultar contraseña' : 'Mostrar contraseña');
+    }
+    btn.addEventListener('click', function () {
+      shown = !shown;
+      input.type = shown ? 'text' : 'password';
+      paint();
+    });
+    paint();
+  }
+  wirePasswordToggle('fPass', 'fPassToggle');
+
   var form = document.getElementById('loginForm');
   var userEl = document.getElementById('fUser');
   var passEl = document.getElementById('fPass');

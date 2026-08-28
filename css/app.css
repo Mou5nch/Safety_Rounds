@@ -997,6 +997,16 @@ tr:hover .row-actions { opacity: 1; }
 }
 .auth-forgot:hover { color: var(--navy-soft); }
 
+.password-field { position: relative; }
+.password-field .input { padding-right: 42px; }
+.password-toggle {
+  position: absolute; top: 50%; right: 4px; transform: translateY(-50%);
+  width: 32px; height: 32px; border-radius: 8px;
+  display: grid; place-items: center; color: var(--ink-3);
+}
+.password-toggle:hover { color: var(--navy); background: var(--surface); }
+.password-toggle svg { width: 17px; height: 17px; }
+
 /* ---------- Panel de accesos ---------- */
 .admin-page { max-width: 980px; margin: 0 auto; padding: 28px 24px 60px; }
 .admin-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 22px; flex-wrap: wrap; }
