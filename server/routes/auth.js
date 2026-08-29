@@ -57,7 +57,7 @@ router.post('/login', async function (req, res) {
   }
 
   try {
-    const { rows } = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
+    const { rows } = await pool.query('SELECT * FROM users WHERE username = $1 OR email = $1', [username]);
     const user = rows[0];
     if (!user || !(await verifyPassword(password, user.password_hash))) {
       registerFailure('login', key);
