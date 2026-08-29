@@ -384,6 +384,8 @@ tr:hover .row-actions { opacity: 1; }
   transition: background .15s, color .15s;
 }
 .seg button.is-active { background: var(--white); color: var(--navy); box-shadow: var(--shadow-sm); }
+.seg--icon button { width: 31px; padding: 0; display: grid; place-items: center; }
+.seg--icon svg { width: 16px; height: 16px; }
 
 /* ==========================================================================
    Módulo: Cuestionarios (carpetas y tarjetas)
