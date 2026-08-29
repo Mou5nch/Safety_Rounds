@@ -327,6 +327,16 @@ svg { display: block; }
 }
 .table th:first-child { border-top-left-radius: 10px; }
 .table th:last-child { border-top-right-radius: 10px; }
+.th-sort {
+  display: inline-flex; align-items: center; gap: 4px;
+  margin: -10px -14px; padding: 10px 14px;
+  text-transform: inherit; letter-spacing: inherit; font: inherit; color: inherit;
+  cursor: pointer; transition: color .12s, background .12s;
+}
+.th-sort:hover { color: var(--navy); background: rgba(67, 86, 174, .06); }
+.th-sort.is-active { color: var(--navy); }
+.th-sort__icon { display: inline-flex; opacity: .3; }
+.th-sort.is-active .th-sort__icon { opacity: 1; color: var(--coral); }
 .table td { padding: 12px 14px; border-bottom: 1px solid var(--line-soft); vertical-align: middle; }
 .table tbody tr { transition: background .12s; }
 .table tbody tr:hover { background: #FAFBFE; }

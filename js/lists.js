@@ -16,7 +16,9 @@
     search: '',
     histFilter: { q: '', formId: '', status: '', folderId: '' },
     devFilter: { q: '', status: '', severityId: '', categoryId: '', centerId: '' },
-    actFilter: { q: '', status: 'pending', responsible: '' }
+    devSort: 'created_desc',
+    actFilter: { q: '', status: 'pending', responsible: '' },
+    actSort: null   // null = orden por defecto (vencidas primero, luego fecha límite)
   };
 
   /* ======================================================================
@@ -507,7 +509,7 @@
     view.className = 'view';
     UI.clear(view);
 
-    var all = Store.all('deviations').sort(function (a, b) { return (b.date || '') < (a.date || '') ? -1 : 1; });
+    var all = sortDevs(Store.all('deviations'));
 
     App.setHeader('Desviaciones detectadas', 'Todas las no conformidades registradas en las inspecciones',
       all.length ? [
@@ -536,6 +538,14 @@
       Store.catalog('category').map(catOpt), 'Todas', renderDeviations)));
     bar.appendChild(UI.field('Centro', pickSelect(ui.devFilter, 'centerId',
       Store.catalog('center').map(catOpt), 'Todos', renderDeviations)));
+    bar.appendChild(UI.field('Ordenar por', sortSelect(ui.devSort, [
+      { value: 'created_desc', label: 'Creación: más recientes' },
+      { value: 'created_asc', label: 'Creación: más antiguas' },
+      { value: 'date_desc', label: 'Fecha de visita: más reciente' },
+      { value: 'date_asc', label: 'Fecha de visita: más antigua' },
+      { value: 'severity', label: 'Gravedad' },
+      { value: 'status', label: 'Abiertas primero' }
+    ], function (v) { ui.devSort = v; renderDeviations(); })));
     view.appendChild(bar);
 
     var rows = filterDevs(all);
@@ -556,6 +566,27 @@
   }
 
   function catOpt(c) { return { value: c.id, label: c.name }; }
+
+  function sortDevs(all) {
+    var key = ui.devSort || 'created_desc';
+    var copy = all.slice();
+    if (key === 'created_asc') return copy.sort(function (a, b) { return (a.createdAt || '') < (b.createdAt || '') ? -1 : 1; });
+    if (key === 'date_desc') return copy.sort(function (a, b) { return (b.date || '') < (a.date || '') ? -1 : 1; });
+    if (key === 'date_asc') return copy.sort(function (a, b) { return (a.date || '') < (b.date || '') ? -1 : 1; });
+    if (key === 'severity') return copy.sort(function (a, b) { return severityOrder(a) - severityOrder(b); });
+    if (key === 'status') return copy.sort(function (a, b) {
+      var oa = a.status === 'closed' ? 1 : 0, ob = b.status === 'closed' ? 1 : 0;
+      return oa !== ob ? oa - ob : (b.createdAt || '') < (a.createdAt || '') ? -1 : 1;
+    });
+    // created_desc: recién creadas primero (por defecto)
+    return copy.sort(function (a, b) { return (b.createdAt || '') < (a.createdAt || '') ? -1 : 1; });
+  }
+
+  function severityOrder(d) {
+    if (!d.severityId) return 999;
+    var c = Store.get('catalogs', d.severityId);
+    return c && c.order != null ? c.order : 999;
+  }
 
   function filterDevs(all) {
     var f = ui.devFilter;
@@ -710,13 +741,8 @@
         if (hay.indexOf(f.q.toLowerCase()) === -1) return false;
       }
       return true;
-    }).sort(function (a, b) {
-      var oa = Dashboard.isOverdue(a) ? 0 : 1, ob = Dashboard.isOverdue(b) ? 0 : 1;
-      if (oa !== ob) return oa - ob;
-      if (!a.dueDate) return 1;
-      if (!b.dueDate) return -1;
-      return a.dueDate < b.dueDate ? -1 : 1;
     });
+    rows = sortActions(rows);
 
     if (!rows.length) {
       view.appendChild(el('div', { class: 'card' }, el('div', { class: 'card__body' },
@@ -726,10 +752,10 @@
 
     var table = el('table', { class: 'table' });
     table.appendChild(el('thead', {}, el('tr', {}, [
-      el('th', { text: 'Acción correctora' }),
-      el('th', { text: 'Responsable' }),
-      el('th', { text: 'Fecha límite' }),
-      el('th', { text: 'Estado' }),
+      sortableHeader('Acción correctora', 'title', renderActions),
+      sortableHeader('Responsable', 'responsible', renderActions),
+      sortableHeader('Fecha límite', 'dueDate', renderActions),
+      sortableHeader('Estado', 'status', renderActions),
       el('th', { text: '' })
     ])));
     var tb = el('tbody');
@@ -744,6 +770,55 @@
       el('div', { class: 'kpi__label', text: label }),
       el('div', { class: 'kpi__value', text: UI.num(value) })
     ]);
+  }
+
+  function sortActions(rows) {
+    var s = ui.actSort;
+    if (!s) {
+      // Orden por defecto: vencidas primero, luego por fecha límite más próxima
+      return rows.slice().sort(function (a, b) {
+        var oa = Dashboard.isOverdue(a) ? 0 : 1, ob = Dashboard.isOverdue(b) ? 0 : 1;
+        if (oa !== ob) return oa - ob;
+        if (!a.dueDate) return 1;
+        if (!b.dueDate) return -1;
+        return a.dueDate < b.dueDate ? -1 : 1;
+      });
+    }
+    var dir = s.dir === 'desc' ? -1 : 1;
+    return rows.slice().sort(function (a, b) {
+      var va = actSortValue(a, s.key), vb = actSortValue(b, s.key);
+      if (va < vb) return -1 * dir;
+      if (va > vb) return 1 * dir;
+      return 0;
+    });
+  }
+
+  function actSortValue(a, key) {
+    if (key === 'title') return (a.title || '').toLowerCase();
+    if (key === 'responsible') return (a.responsible || '').toLowerCase();
+    if (key === 'dueDate') return a.dueDate || '9999-99-99';
+    if (key === 'status') {
+      var order = { open: 0, progress: 1, done: 2 };
+      return order[a.status] != null ? order[a.status] : 3;
+    }
+    return '';
+  }
+
+  function sortableHeader(label, key, onChange) {
+    var active = ui.actSort && ui.actSort.key === key;
+    var dir = active ? ui.actSort.dir : null;
+    return el('th', {}, el('button', {
+      class: 'th-sort' + (active ? ' is-active' : ''),
+      type: 'button',
+      title: 'Ordenar por ' + label.toLowerCase(),
+      onclick: function () {
+        ui.actSort = { key: key, dir: active && dir === 'asc' ? 'desc' : 'asc' };
+        onChange();
+      }
+    }, [
+      el('span', { text: label }),
+      el('span', { class: 'th-sort__icon', html: ico(active && dir === 'desc' ? 'arrowDown' : 'arrowUp', 12) })
+    ]));
   }
 
   function actionRow(a) {
@@ -898,6 +973,12 @@
   function pickSelect(target, key, options, allLabel, onChange) {
     var s = UI.selectFrom([{ value: '', label: allLabel }].concat(options), target[key], { class: 'select select--sm' });
     s.addEventListener('change', function () { target[key] = s.value; onChange(); });
+    return s;
+  }
+
+  function sortSelect(value, options, onChange) {
+    var s = UI.selectFrom(options, value, { class: 'select select--sm' });
+    s.addEventListener('change', function () { onChange(s.value); });
     return s;
   }
 
