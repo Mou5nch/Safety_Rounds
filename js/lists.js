@@ -14,9 +14,13 @@
   var ui = {
     folderId: '',          // carpeta activa en Cuestionarios
     search: '',
+    viewMode: { forms: 'grid', deviations: 'grid' },   // 'grid' (tarjetas) | 'list' (tabla)
+    formsSort: null,       // { key, dir } — solo se usa en vista de lista
     histFilter: { q: '', formId: '', status: '', folderId: '' },
     devFilter: { q: '', status: '', severityId: '', categoryId: '', centerId: '' },
-    actFilter: { q: '', status: 'pending', responsible: '' }
+    devSort: 'created_desc',
+    actFilter: { q: '', status: 'pending', responsible: '' },
+    actSort: null   // null = orden por defecto (vencidas primero, luego fecha límite)
   };
 
   /* ======================================================================
@@ -74,6 +78,8 @@
     // Buscador
     var tools = el('div', { class: 'toolbar' });
     tools.appendChild(searchBox(ui.search, function (v) { ui.search = v; renderForms(mode); }, 'Buscar cuestionario…'));
+    tools.appendChild(el('div', { class: 'toolbar__end' },
+      viewToggle(ui.viewMode.forms, function (m) { ui.viewMode.forms = m; renderForms(mode); })));
     view.appendChild(tools);
 
     var visible = forms.filter(function (f) {
@@ -92,9 +98,96 @@
       return;
     }
 
-    var grid = el('div', { class: 'grid-cards' });
-    visible.forEach(function (f) { grid.appendChild(formCard(f, isEdit, mode)); });
-    view.appendChild(grid);
+    if (ui.viewMode.forms === 'list') {
+      view.appendChild(formsTable(sortForms(visible), isEdit, mode));
+    } else {
+      var grid = el('div', { class: 'grid-cards' });
+      visible.forEach(function (f) { grid.appendChild(formCard(f, isEdit, mode)); });
+      view.appendChild(grid);
+    }
+  }
+
+  function sortForms(rows) {
+    var s = ui.formsSort;
+    if (!s) return rows;
+    var dir = s.dir === 'desc' ? -1 : 1;
+    return rows.slice().sort(function (a, b) {
+      var va = formSortValue(a, s.key), vb = formSortValue(b, s.key);
+      if (va < vb) return -1 * dir;
+      if (va > vb) return 1 * dir;
+      return 0;
+    });
+  }
+
+  function formSortValue(f, key) {
+    if (key === 'name') return (f.name || '').toLowerCase();
+    if (key === 'folder') {
+      var folder = f.folderId ? Store.get('folders', f.folderId) : null;
+      return folder ? folder.name.toLowerCase() : '';
+    }
+    if (key === 'questions') return (f.fields || []).filter(Builder.isQuestion).length;
+    if (key === 'visits') return Store.all('visits').filter(function (v) { return v.formId === f.id && v.status === 'completed'; }).length;
+    return '';
+  }
+
+  function formsTable(rows, isEdit, mode) {
+    function setSort(s) { ui.formsSort = s; renderForms(mode); }
+
+    var table = el('table', { class: 'table' });
+    table.appendChild(el('thead', {}, el('tr', {}, [
+      sortableHeader('Cuestionario', 'name', ui.formsSort, setSort),
+      sortableHeader('Carpeta', 'folder', ui.formsSort, setSort),
+      sortableHeader('Preguntas', 'questions', ui.formsSort, setSort),
+      sortableHeader('Visitas', 'visits', ui.formsSort, setSort),
+      el('th', { text: '' })
+    ])));
+    var tb = el('tbody');
+    rows.forEach(function (f) { tb.appendChild(formTableRow(f, isEdit, mode)); });
+    table.appendChild(tb);
+
+    return el('div', { class: 'card' }, el('div', { class: 'table-wrap' }, table));
+  }
+
+  function formTableRow(f, isEdit, mode) {
+    var qs = (f.fields || []).filter(Builder.isQuestion).length;
+    var cis = (f.fields || []).filter(function (x) { return x.type === 'checkitem'; }).length;
+    var visits = Store.all('visits').filter(function (v) { return v.formId === f.id && v.status === 'completed'; }).length;
+    var folder = f.folderId ? Store.get('folders', f.folderId) : null;
+
+    var tr = el('tr');
+    tr.appendChild(el('td', {}, el('div', { style: { display: 'flex', alignItems: 'center', gap: '10px' } }, [
+      el('span', {
+        style: { width: '30px', height: '30px', borderRadius: '8px', background: f.color || '#1E2B6F', color: '#fff', display: 'grid', placeItems: 'center', flex: 'none' },
+        html: ico(f.icon || 'clipboard', 15)
+      }),
+      el('div', { style: { minWidth: '0' } }, [
+        el('div', { style: { fontWeight: '600' }, text: f.name }),
+        f.description ? el('div', { class: 'hint', style: { margin: 0 }, text: trunc(f.description, 60) }) : null
+      ])
+    ])));
+    tr.appendChild(el('td', { text: folder ? folder.name : '—' }));
+    tr.appendChild(el('td', { text: UI.num(qs) + (cis ? ' (' + UI.num(cis) + ' puntos)' : '') }));
+    tr.appendChild(el('td', { text: UI.num(visits) }));
+    tr.appendChild(el('td', {}, el('div', { class: 'row-actions' }, isEdit ? [
+      el('button', {
+        class: 'btn btn--ghost btn--sm btn--icon', title: 'Editar', html: ico('edit', 15),
+        onclick: function () { Builder.open(f.id); }
+      }),
+      el('button', {
+        class: 'btn btn--ghost btn--sm btn--icon', title: 'Más opciones', html: ico('sliders', 15),
+        onclick: function () { formMenu(f, mode); }
+      })
+    ] : [
+      el('button', {
+        class: 'btn btn--primary btn--sm btn--icon', title: 'Nueva visita', html: ico('play', 15),
+        onclick: function () { Runner.start(f.id); }
+      }),
+      el('button', {
+        class: 'btn btn--ghost btn--sm btn--icon', title: 'Vista previa', html: ico('eye', 15),
+        onclick: function () { Runner.preview(f); }
+      })
+    ])));
+    return tr;
   }
 
   function draftsCard(drafts) {
@@ -507,7 +600,7 @@
     view.className = 'view';
     UI.clear(view);
 
-    var all = Store.all('deviations').sort(function (a, b) { return (b.date || '') < (a.date || '') ? -1 : 1; });
+    var all = sortDevs(Store.all('deviations'));
 
     App.setHeader('Desviaciones detectadas', 'Todas las no conformidades registradas en las inspecciones',
       all.length ? [
@@ -536,13 +629,24 @@
       Store.catalog('category').map(catOpt), 'Todas', renderDeviations)));
     bar.appendChild(UI.field('Centro', pickSelect(ui.devFilter, 'centerId',
       Store.catalog('center').map(catOpt), 'Todos', renderDeviations)));
+    bar.appendChild(UI.field('Ordenar por', sortSelect(ui.devSort, [
+      { value: 'created_desc', label: 'Creación: más recientes' },
+      { value: 'created_asc', label: 'Creación: más antiguas' },
+      { value: 'date_desc', label: 'Fecha de visita: más reciente' },
+      { value: 'date_asc', label: 'Fecha de visita: más antigua' },
+      { value: 'severity', label: 'Gravedad' },
+      { value: 'status', label: 'Abiertas primero' }
+    ], function (v) { ui.devSort = v; renderDeviations(); })));
     view.appendChild(bar);
 
     var rows = filterDevs(all);
-    view.appendChild(el('div', {
-      style: { fontSize: '13px', color: 'var(--ink-3)', marginBottom: '12px' },
-      text: UI.num(rows.length) + ' ' + UI.plural(rows.length, 'desviación', 'desviaciones') + (rows.length === all.length ? '' : ' de ' + UI.num(all.length))
-    }));
+    view.appendChild(el('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' } }, [
+      el('div', {
+        style: { fontSize: '13px', color: 'var(--ink-3)' },
+        text: UI.num(rows.length) + ' ' + UI.plural(rows.length, 'desviación', 'desviaciones') + (rows.length === all.length ? '' : ' de ' + UI.num(all.length))
+      }),
+      viewToggle(ui.viewMode.deviations, function (m) { ui.viewMode.deviations = m; renderDeviations(); })
+    ]));
 
     if (!rows.length) {
       view.appendChild(el('div', { class: 'card' }, el('div', { class: 'card__body' },
@@ -550,12 +654,115 @@
       return;
     }
 
-    var grid = el('div', { class: 'grid-cards' });
-    rows.forEach(function (d) { grid.appendChild(devCard(d)); });
-    view.appendChild(grid);
+    if (ui.viewMode.deviations === 'list') {
+      view.appendChild(devTable(rows));
+    } else {
+      var grid = el('div', { class: 'grid-cards' });
+      rows.forEach(function (d) { grid.appendChild(devCard(d)); });
+      view.appendChild(grid);
+    }
+  }
+
+  function devSortState() {
+    if (ui.devSort === 'date_desc') return { key: 'date', dir: 'desc' };
+    if (ui.devSort === 'date_asc') return { key: 'date', dir: 'asc' };
+    if (ui.devSort === 'created_desc') return { key: 'created', dir: 'desc' };
+    if (ui.devSort === 'created_asc') return { key: 'created', dir: 'asc' };
+    if (ui.devSort === 'severity') return { key: 'severity', dir: 'asc' };
+    if (ui.devSort === 'status') return { key: 'status', dir: 'asc' };
+    return null;
+  }
+
+  function setDevSortFromHeader(s) {
+    if (s.key === 'date') ui.devSort = s.dir === 'asc' ? 'date_asc' : 'date_desc';
+    else if (s.key === 'created') ui.devSort = s.dir === 'asc' ? 'created_asc' : 'created_desc';
+    else if (s.key === 'severity') ui.devSort = 'severity';
+    else if (s.key === 'status') ui.devSort = 'status';
+    renderDeviations();
+  }
+
+  function devTable(rows) {
+    var state = devSortState();
+    var table = el('table', { class: 'table' });
+    table.appendChild(el('thead', {}, el('tr', {}, [
+      sortableHeader('Estado', 'status', state, setDevSortFromHeader),
+      sortableHeader('Gravedad', 'severity', state, setDevSortFromHeader),
+      el('th', { text: 'Categoría' }),
+      el('th', { text: 'Punto de inspección' }),
+      el('th', { text: 'Visita' }),
+      sortableHeader('Fecha', 'date', state, setDevSortFromHeader),
+      el('th', { text: '' })
+    ])));
+    var tb = el('tbody');
+    rows.forEach(function (d) { tb.appendChild(devTableRow(d)); });
+    table.appendChild(tb);
+    return el('div', { class: 'card' }, el('div', { class: 'table-wrap' }, table));
+  }
+
+  function devTableRow(d) {
+    var closed = d.status === 'closed';
+    var sevColor = d.severityId ? Store.catalogColor(d.severityId) : null;
+
+    var tr = el('tr');
+    tr.appendChild(el('td', {}, el('span', {
+      class: 'tag ' + (closed ? 'tag--ok' : 'tag--danger'),
+      html: ico(closed ? 'check' : 'alert', 12) + (closed ? 'Cerrada' : 'Abierta')
+    })));
+    tr.appendChild(el('td', {}, d.severityId
+      ? el('span', { class: 'tag', style: { background: UI.withAlpha(sevColor, .13), color: sevColor }, text: Store.catalogName(d.severityId) })
+      : el('span', { style: { color: 'var(--ink-3)' }, text: '—' })));
+    tr.appendChild(el('td', { text: d.categoryId ? Store.catalogName(d.categoryId) : '—' }));
+    tr.appendChild(el('td', {}, [
+      el('div', { style: { fontWeight: '600', marginBottom: '2px' }, text: d.question }),
+      el('div', { class: 'hint', style: { margin: 0 }, text: trunc(d.description || 'Sin descripción', 70) })
+    ]));
+    tr.appendChild(el('td', {}, [
+      el('div', { text: d.visitCode || '—' }),
+      d.centerId ? el('div', { class: 'hint', style: { margin: 0 }, text: Store.catalogName(d.centerId) }) : null
+    ]));
+    tr.appendChild(el('td', { text: UI.fmtDate(d.date) }));
+    tr.appendChild(el('td', {}, el('div', { class: 'row-actions' }, [
+      el('button', {
+        class: 'btn btn--ghost btn--sm btn--icon', title: closed ? 'Reabrir' : 'Cerrar', html: ico(closed ? 'refresh' : 'check', 15),
+        onclick: function () {
+          d.status = closed ? 'open' : 'closed';
+          d.closedAt = closed ? null : Store.nowISO();
+          Store.put('deviations', d);
+          UI.toast(closed ? 'Desviación reabierta.' : 'Desviación cerrada.');
+          App.refreshBadges();
+          renderDeviations();
+        }
+      }),
+      el('button', {
+        class: 'btn btn--ghost btn--sm btn--icon', title: 'Abrir la visita', html: ico('external', 15),
+        onclick: function () { Runner.start(d.formId, d.visitId); }
+      })
+    ])));
+    return tr;
   }
 
   function catOpt(c) { return { value: c.id, label: c.name }; }
+
+  function sortDevs(all) {
+    var key = ui.devSort || 'created_desc';
+    var copy = all.slice();
+    if (key === 'created_asc') return copy.sort(function (a, b) { return (a.createdAt || '') < (b.createdAt || '') ? -1 : 1; });
+    if (key === 'date_desc') return copy.sort(function (a, b) { return (b.date || '') < (a.date || '') ? -1 : 1; });
+    if (key === 'date_asc') return copy.sort(function (a, b) { return (a.date || '') < (b.date || '') ? -1 : 1; });
+    if (key === 'severity') return copy.sort(function (a, b) { return severityOrder(a) - severityOrder(b); });
+    if (key === 'status') return copy.sort(function (a, b) {
+      var oa = a.status === 'closed' ? 1 : 0, ob = b.status === 'closed' ? 1 : 0;
+      return oa !== ob ? oa - ob : (b.createdAt || '') < (a.createdAt || '') ? -1 : 1;
+    });
+    // created_desc: recién creadas primero (por defecto)
+    return copy.sort(function (a, b) { return (b.createdAt || '') < (a.createdAt || '') ? -1 : 1; });
+  }
+
+  function severityOrder(d) {
+    if (!d.severityId) return 999;
+    var c = Store.get('catalogs', d.severityId);
+    return c && c.order != null ? c.order : 999;
+  }
 
   function filterDevs(all) {
     var f = ui.devFilter;
@@ -710,13 +917,8 @@
         if (hay.indexOf(f.q.toLowerCase()) === -1) return false;
       }
       return true;
-    }).sort(function (a, b) {
-      var oa = Dashboard.isOverdue(a) ? 0 : 1, ob = Dashboard.isOverdue(b) ? 0 : 1;
-      if (oa !== ob) return oa - ob;
-      if (!a.dueDate) return 1;
-      if (!b.dueDate) return -1;
-      return a.dueDate < b.dueDate ? -1 : 1;
     });
+    rows = sortActions(rows);
 
     if (!rows.length) {
       view.appendChild(el('div', { class: 'card' }, el('div', { class: 'card__body' },
@@ -726,10 +928,10 @@
 
     var table = el('table', { class: 'table' });
     table.appendChild(el('thead', {}, el('tr', {}, [
-      el('th', { text: 'Acción correctora' }),
-      el('th', { text: 'Responsable' }),
-      el('th', { text: 'Fecha límite' }),
-      el('th', { text: 'Estado' }),
+      sortableHeader('Acción correctora', 'title', ui.actSort, setActSort),
+      sortableHeader('Responsable', 'responsible', ui.actSort, setActSort),
+      sortableHeader('Fecha límite', 'dueDate', ui.actSort, setActSort),
+      sortableHeader('Estado', 'status', ui.actSort, setActSort),
       el('th', { text: '' })
     ])));
     var tb = el('tbody');
@@ -744,6 +946,71 @@
       el('div', { class: 'kpi__label', text: label }),
       el('div', { class: 'kpi__value', text: UI.num(value) })
     ]);
+  }
+
+  function setActSort(s) { ui.actSort = s; renderActions(); }
+
+  function sortActions(rows) {
+    var s = ui.actSort;
+    if (!s) {
+      // Orden por defecto: vencidas primero, luego por fecha límite más próxima
+      return rows.slice().sort(function (a, b) {
+        var oa = Dashboard.isOverdue(a) ? 0 : 1, ob = Dashboard.isOverdue(b) ? 0 : 1;
+        if (oa !== ob) return oa - ob;
+        if (!a.dueDate) return 1;
+        if (!b.dueDate) return -1;
+        return a.dueDate < b.dueDate ? -1 : 1;
+      });
+    }
+    var dir = s.dir === 'desc' ? -1 : 1;
+    return rows.slice().sort(function (a, b) {
+      var va = actSortValue(a, s.key), vb = actSortValue(b, s.key);
+      if (va < vb) return -1 * dir;
+      if (va > vb) return 1 * dir;
+      return 0;
+    });
+  }
+
+  function actSortValue(a, key) {
+    if (key === 'title') return (a.title || '').toLowerCase();
+    if (key === 'responsible') return (a.responsible || '').toLowerCase();
+    if (key === 'dueDate') return a.dueDate || '9999-99-99';
+    if (key === 'status') {
+      var order = { open: 0, progress: 1, done: 2 };
+      return order[a.status] != null ? order[a.status] : 3;
+    }
+    return '';
+  }
+
+  /** Cabecera de tabla pinchable para ordenar. `sortState` es { key, dir } o
+   * null; `onSort` recibe el nuevo estado ya calculado (toggle de dirección
+   * si se pincha la misma columna, o 'asc' si se cambia de columna). */
+  function sortableHeader(label, key, sortState, onSort) {
+    var active = sortState && sortState.key === key;
+    var dir = active ? sortState.dir : null;
+    return el('th', {}, el('button', {
+      class: 'th-sort' + (active ? ' is-active' : ''),
+      type: 'button',
+      title: 'Ordenar por ' + label.toLowerCase(),
+      onclick: function () { onSort({ key: key, dir: active && dir === 'asc' ? 'desc' : 'asc' }); }
+    }, [
+      el('span', { text: label }),
+      el('span', { class: 'th-sort__icon', html: ico(active && dir === 'desc' ? 'arrowDown' : 'arrowUp', 12) })
+    ]));
+  }
+
+  /** Interruptor cuadrícula / lista, reutilizado en las pantallas que
+   * ofrecen ambas vistas. */
+  function viewToggle(mode, onChange) {
+    var wrap = el('div', { class: 'seg seg--icon' });
+    [{ m: 'grid', label: 'Ver en cuadrícula' }, { m: 'list', label: 'Ver en lista' }].forEach(function (o) {
+      wrap.appendChild(el('button', {
+        class: mode === o.m ? 'is-active' : '', type: 'button', title: o.label,
+        html: ico(o.m === 'grid' ? 'grid' : 'list', 16),
+        onclick: function () { onChange(o.m); }
+      }));
+    });
+    return wrap;
   }
 
   function actionRow(a) {
@@ -898,6 +1165,12 @@
   function pickSelect(target, key, options, allLabel, onChange) {
     var s = UI.selectFrom([{ value: '', label: allLabel }].concat(options), target[key], { class: 'select select--sm' });
     s.addEventListener('change', function () { target[key] = s.value; onChange(); });
+    return s;
+  }
+
+  function sortSelect(value, options, onChange) {
+    var s = UI.selectFrom(options, value, { class: 'select select--sm' });
+    s.addEventListener('change', function () { onChange(s.value); });
     return s;
   }
 
