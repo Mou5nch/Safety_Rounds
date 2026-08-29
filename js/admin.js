@@ -185,9 +185,9 @@
     ]);
 
     var body = el('div', {}, [
-      UI.field('Usuario', userEl),
+      UI.field('Usuario', userEl, 'Para iniciar sesión sirve tanto este usuario como el correo de abajo.'),
       UI.field('Nombre', nameEl),
-      UI.field('Correo (opcional)', emailEl, 'Si lo indicas, esta cuenta podrá usar «¿Has olvidado tu contraseña?» en el login.'),
+      UI.field('Correo (opcional)', emailEl, 'Si lo indicas, esta cuenta también podrá usar «¿Has olvidado tu contraseña?» en el login.'),
       UI.field('Rol', roleEl),
       UI.field('Contraseña', passEl, 'Compártela con quien vaya a usar esta cuenta de prueba.')
     ]);
