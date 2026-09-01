@@ -146,7 +146,6 @@
         regBtn.disabled = false;
         if (!r.ok) { showRegError((r.data && r.data.error) || 'No se ha podido crear la cuenta.'); return; }
         cacheAuth(r.data);
-        try { localStorage.setItem('sr:needsDemoSeed', '1'); } catch (e) {}
         location.replace(target());
       }).catch(function () {
         regBtn.disabled = false;

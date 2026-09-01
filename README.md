@@ -523,18 +523,32 @@ mano:
   para distinguirla a simple vista de las cuentas que ha dado de alta el
   administrador. Queda igualmente en la base de datos del administrador, con
   su propio registro de sesiones y tiempo conectado.
-- **Solo la primera vez** que la cuenta entra en la aplicación, se le cargan
-  los datos de ejemplo de [`demo-data.json`](demo-data.json) (cuestionarios,
-  visitas, desviaciones y acciones ya resueltas, para que se vea la
-  aplicación en uso desde el primer momento). Los accesos siguientes con esa
-  misma cuenta —incluido cerrar sesión y volver a entrar— no repiten esa
-  carga ni borran lo que la persona haya ido creando o modificando en su
-  sesión: al ser una demo, se parte de un mismo punto de partida una sola
-  vez, pero después la cuenta funciona con normalidad.
+- **Solo la primera vez** que la cuenta entra en la aplicación **en cada
+  dispositivo**, se le cargan los datos de ejemplo de
+  [`demo-data.json`](demo-data.json) (cuestionarios, visitas, desviaciones y
+  acciones ya resueltas, para que se vea la aplicación en uso desde el primer
+  momento). Los accesos siguientes con esa misma cuenta en ese mismo
+  navegador —incluido cerrar sesión y volver a entrar— no repiten esa carga
+  ni borran lo que la persona haya ido creando o modificando: al ser una
+  demo, se parte de un mismo punto de partida una sola vez, pero después la
+  cuenta funciona con normalidad. Como todos los datos de trabajo viven en el
+  dispositivo (ver punto 6) y no en el servidor, si la misma cuenta se abre
+  en otro navegador o dispositivo, ahí también se le cargan los datos de
+  ejemplo la primera vez: es justamente lo que hace que «cada acceso» tenga
+  siempre algo que enseñar, en vez de depender de una marca de una sola vez
+  que solo valdría para el navegador donde se registró.
+  Aplica igual a las cuentas con rol `usuario` que cree el propio
+  administrador desde el panel de accesos (opción «Usuario (demo)» del
+  formulario), no solo a las autorregistradas.
+- Si por lo que sea la primera carga falla (por ejemplo, sin conexión en ese
+  instante), la propia cuenta tiene en **Ajustes y datos → Borrar datos** un
+  botón **Restaurar datos de demostración** que vuelve a traer la copia sin
+  tener que borrar ni volver a crear la cuenta. Solo aparece para cuentas con
+  rol `usuario`.
 - Como cualquier otra cuenta ficticia, el administrador puede restablecerle
   la contraseña o borrarla desde el panel de accesos si hace falta.
 
 Para renovar el contenido de ejemplo (por ejemplo, para que las fechas de las
 visitas no queden muy desfasadas) basta con generar una copia de seguridad
-nueva desde **Ajustes y datos → Exportar** con una cuenta de prueba y
+nueva desde **Ajustes y datos → Descargar copia** con una cuenta de prueba y
 sustituir el archivo `demo-data.json` del repositorio por esa exportación.

@@ -7,7 +7,7 @@
 // Al subir este nombre, la activación borra las cachés anteriores: es lo que
 // hace que quien tenga la aplicación instalada reciba de verdad la versión
 // nueva en lugar de seguir con los archivos guardados de la anterior.
-var CACHE = 'safety-rounds-v7';
+var CACHE = 'safety-rounds-v8';
 
 var ASSETS = [
   './',

@@ -195,16 +195,19 @@
     });
   }
 
-  // Tras registrarse, la primera carga de la cuenta trae los datos de la
-  // copia de demostración (js/login.js deja la marca sr:needsDemoSeed). Solo
-  // ocurre esa vez: si falla o no hay marca, se sigue con el arranque normal
-  // y Seed.ensure() se encarga de dejar algo de contenido de ejemplo.
+  // Toda cuenta de demostración (rol 'usuario', ya sea autorregistrada o
+  // creada por el administrador) debe encontrar los datos de demo-data.json
+  // la primera vez que entra EN CADA NAVEGADOR. No se guarda una marca de
+  // "ya se hizo" en el servidor —los datos viven solo en este dispositivo,
+  // en IndexedDB— así que la comprobación es: ¿esta cuenta es de
+  // demostración y este navegador todavía no tiene nada guardado (settings
+  // sin "seeded")? Si es que sí, se importa. Si falla (sin red, JSON
+  // corrupto…) no se marca nada como hecho: se reintenta en el siguiente
+  // arranque, en vez de quedarse a medias para siempre como pasaba con la
+  // marca de una sola vez que se usaba antes.
   function loadDemoDataIfNeeded() {
-    var needsSeed = false;
-    try { needsSeed = localStorage.getItem('sr:needsDemoSeed') === '1'; } catch (e) {}
-    if (!needsSeed) return Promise.resolve(false);
-
-    try { localStorage.removeItem('sr:needsDemoSeed'); } catch (e) {}
+    if (cachedRole() !== 'usuario') return Promise.resolve(false);
+    if (Store.settings().seeded) return Promise.resolve(false);
 
     return fetch('demo-data.json').then(function (res) {
       if (!res.ok) throw new Error('No se ha podido cargar la copia de demostración.');
@@ -216,6 +219,13 @@
       console.error(e);
       return false;
     });
+  }
+
+  function cachedRole() {
+    try {
+      var a = JSON.parse(localStorage.getItem('sr:auth') || 'null');
+      return a && a.role;
+    } catch (e) { return null; }
   }
 
   /* ---------- PWA ---------- */
