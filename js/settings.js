@@ -672,6 +672,25 @@
     body.appendChild(actions);
 
     // Zona peligrosa
+    var dangerButtons = [
+      el('button', {
+        class: 'btn btn--danger btn--sm', html: ico('trash', 15) + '<span>Borrar visitas y desviaciones</span>',
+        onclick: function () { wipe(['visits', 'deviations', 'actions'], 'las visitas, desviaciones y acciones', 'Los cuestionarios y las tipologías se conservan.'); }
+      }),
+      el('button', {
+        class: 'btn btn--danger btn--sm', html: ico('trash', 15) + '<span>Borrar todo</span>',
+        onclick: function () { wipe(Store.STORES, 'TODOS los datos de la aplicación', 'Cuestionarios, visitas, desviaciones, acciones y tipologías.'); }
+      })
+    ];
+    // Solo para cuentas de demostración: si la copia de demo-data.json no
+    // llegó a cargarse bien la primera vez (sin red en ese momento, por
+    // ejemplo), esto la vuelve a traer sin tener que borrar la cuenta.
+    if (cachedRole() === 'usuario') {
+      dangerButtons.push(el('button', {
+        class: 'btn btn--danger btn--sm', html: ico('download', 15) + '<span>Restaurar datos de demostración</span>',
+        onclick: reloadDemoData
+      }));
+    }
     var danger = el('div', {
       class: 'card danger-zone',
       style: { marginTop: '20px' }
@@ -679,16 +698,7 @@
     danger.appendChild(el('div', { class: 'card__body' }, [
       el('div', { style: { fontWeight: '700', fontSize: '14.5px', color: 'var(--coral-dark)', marginBottom: '5px' }, text: 'Borrar datos' }),
       el('div', { class: 'hint', style: { marginBottom: '14px' }, text: 'Elimina información de forma permanente. Descarga antes una copia de seguridad.' }),
-      el('div', { style: { display: 'flex', gap: '9px', flexWrap: 'wrap' } }, [
-        el('button', {
-          class: 'btn btn--danger btn--sm', html: ico('trash', 15) + '<span>Borrar visitas y desviaciones</span>',
-          onclick: function () { wipe(['visits', 'deviations', 'actions'], 'las visitas, desviaciones y acciones', 'Los cuestionarios y las tipologías se conservan.'); }
-        }),
-        el('button', {
-          class: 'btn btn--danger btn--sm', html: ico('trash', 15) + '<span>Borrar todo</span>',
-          onclick: function () { wipe(Store.STORES, 'TODOS los datos de la aplicación', 'Cuestionarios, visitas, desviaciones, acciones y tipologías.'); }
-        })
-      ])
+      el('div', { style: { display: 'flex', gap: '9px', flexWrap: 'wrap' } }, dangerButtons)
     ]));
     body.appendChild(danger);
 
@@ -768,6 +778,36 @@
     } catch (e) {
       UI.toast(e.message, 'err');
     }
+  }
+
+  function cachedRole() {
+    try {
+      var a = JSON.parse(localStorage.getItem('sr:auth') || 'null');
+      return a && a.role;
+    } catch (e) { return null; }
+  }
+
+  function reloadDemoData() {
+    UI.confirm({
+      title: 'Restaurar datos de demostración',
+      text: 'Sustituye TODOS tus datos actuales por los de la copia de demostración. Úsalo si al crear la cuenta no llegaron a cargarse los cuestionarios y visitas de ejemplo. Esta acción no se puede deshacer.',
+      confirmLabel: 'Sí, restaurar',
+      confirmIcon: 'download'
+    }).then(function (ok) {
+      if (!ok) return;
+      fetch('demo-data.json').then(function (res) {
+        if (!res.ok) throw new Error('No se ha podido descargar la copia de demostración.');
+        return res.json();
+      }).then(function (data) {
+        Store.importAll(data, true);
+        App.refreshBadges();
+        App.updateStorage();
+        render();
+        UI.toast('Datos de demostración restaurados.');
+      }).catch(function () {
+        UI.toast('No se ha podido restaurar la copia de demostración. Comprueba tu conexión.', 'err');
+      });
+    });
   }
 
   function wipe(stores, what, extra) {
