@@ -111,6 +111,8 @@
 
   function boot() {
     Store.init().then(function () {
+      return loadDemoDataIfNeeded();
+    }).then(function (demoLoaded) {
       // Crea las listas de sistema y engancha los elementos de la versión 1
       Store.migrate();
       var created = Seed.ensure();
@@ -126,7 +128,11 @@
       var hash = (location.hash || '').replace('#', '');
       go(ROUTES[hash] ? hash : 'dashboard');
 
-      if (created) {
+      if (demoLoaded) {
+        setTimeout(function () {
+          UI.toast('Cuenta de demostración creada. Hemos cargado datos de ejemplo para que explores la aplicación.', 'info');
+        }, 700);
+      } else if (created) {
         setTimeout(function () {
           UI.toast('Bienvenido. Hemos dejado un cuestionario de ejemplo para que veas cómo funciona.', 'info');
         }, 700);
@@ -140,6 +146,29 @@
         '<h1 style="font-size:20px">No se ha podido iniciar la aplicación</h1>' +
         '<p style="color:#4A5378;line-height:1.6">' + UI.esc(e.message) + '</p>' +
         '<p style="color:#7A83A3;font-size:14px">Comprueba que el navegador permite el almacenamiento local. En modo incógnito algunas funciones están restringidas.</p></div>';
+    });
+  }
+
+  // Tras registrarse, la primera carga de la cuenta trae los datos de la
+  // copia de demostración (js/login.js deja la marca sr:needsDemoSeed). Solo
+  // ocurre esa vez: si falla o no hay marca, se sigue con el arranque normal
+  // y Seed.ensure() se encarga de dejar algo de contenido de ejemplo.
+  function loadDemoDataIfNeeded() {
+    var needsSeed = false;
+    try { needsSeed = localStorage.getItem('sr:needsDemoSeed') === '1'; } catch (e) {}
+    if (!needsSeed) return Promise.resolve(false);
+
+    try { localStorage.removeItem('sr:needsDemoSeed'); } catch (e) {}
+
+    return fetch('demo-data.json').then(function (res) {
+      if (!res.ok) throw new Error('No se ha podido cargar la copia de demostración.');
+      return res.json();
+    }).then(function (data) {
+      Store.importAll(data, true);
+      return true;
+    }).catch(function (e) {
+      console.error(e);
+      return false;
     });
   }
 

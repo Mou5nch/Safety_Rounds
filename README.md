@@ -470,3 +470,36 @@ pantalla de login: añade el plugin PostgreSQL (10.1) antes de dar la URL a
 nadie. Si lo que quieres es la aplicación de siempre sin ningún inicio de
 sesión, despliega sin `package.json`/`server/` (opciones A-C del punto 1) en
 vez de en este servidor.
+
+### 10.7 Registro de cuentas de demostración
+
+En `login.html`, junto al formulario de acceso, hay un enlace **¿No tienes
+cuenta? Regístrate**. Es un alta pública pensada para que cualquiera pueda
+probar la aplicación sin que el administrador tenga que crearle una cuenta a
+mano:
+
+- Solo pide nombre, correo y contraseña (el propio correo hace de nombre de
+  usuario, no hay que inventarse uno aparte). La contraseña la elige la
+  persona que se registra; el único requisito es que tenga 8 caracteres o
+  más.
+- Toda cuenta creada por esta vía queda con el rol **`usuario`**, distinto de
+  administrador, supervisor o inspector. En el panel de accesos aparece
+  etiquetada como *Usuario (autorregistrado)* con una marca de color propia,
+  para distinguirla a simple vista de las cuentas que ha dado de alta el
+  administrador. Queda igualmente en la base de datos del administrador, con
+  su propio registro de sesiones y tiempo conectado.
+- **Solo la primera vez** que la cuenta entra en la aplicación, se le cargan
+  los datos de ejemplo de [`demo-data.json`](demo-data.json) (cuestionarios,
+  visitas, desviaciones y acciones ya resueltas, para que se vea la
+  aplicación en uso desde el primer momento). Los accesos siguientes con esa
+  misma cuenta —incluido cerrar sesión y volver a entrar— no repiten esa
+  carga ni borran lo que la persona haya ido creando o modificando en su
+  sesión: al ser una demo, se parte de un mismo punto de partida una sola
+  vez, pero después la cuenta funciona con normalidad.
+- Como cualquier otra cuenta ficticia, el administrador puede restablecerle
+  la contraseña o borrarla desde el panel de accesos si hace falta.
+
+Para renovar el contenido de ejemplo (por ejemplo, para que las fechas de las
+visitas no queden muy desfasadas) basta con generar una copia de seguridad
+nueva desde **Ajustes y datos → Exportar** con una cuenta de prueba y
+sustituir el archivo `demo-data.json` del repositorio por esa exportación.
