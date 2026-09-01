@@ -86,6 +86,18 @@ async function initSchema() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
       revoked BOOLEAN NOT NULL DEFAULT FALSE
     );
+
+    -- Un registro por cada vez que alguien deja una pantalla del menú: cuánto
+    -- tiempo estuvo. Se agrega en server/routes/admin.js para el mapa de
+    -- calor de actividad por usuario.
+    CREATE TABLE IF NOT EXISTS nav_events (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      route TEXT NOT NULL,
+      seconds INTEGER NOT NULL DEFAULT 0,
+      occurred_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS nav_events_user_id_idx ON nav_events(user_id);
   `);
 }
 

@@ -99,6 +99,10 @@
 
     App.setHeader('Dashboard de control', 'Visión conjunta e individualizada de las inspecciones', [
       el('button', {
+        class: 'btn btn--ghost btn--sm', html: ico('filePdf', 16) + '<span>Descargar PDF</span>',
+        onclick: function () { exportDashboardPDF(visits, devs); }
+      }),
+      el('button', {
         class: 'btn btn--ghost btn--sm', html: ico('table', 16) + '<span>Exportar</span>',
         onclick: function () { exportMenu(visits, devs); }
       })
@@ -758,6 +762,408 @@
         sub ? el('div', { class: 'card__sub', text: sub }) : null
       ])
     ]));
+  }
+
+  /* ---------- Informe del dashboard en PDF ----------
+     Recoge, tal cual se ve en pantalla, todos los bloques del dashboard:
+     KPIs, evolución mensual, conformidad, desglose por cuestionario, puntos
+     que más fallan, tipología de las desviaciones y control del plan de
+     acción. Pensado para poder adjuntarlo a un correo, no para sustituir el
+     detalle del CSV. Se maqueta con las mismas primitivas jsPDF que
+     js/pdf.js usa para el informe de una visita, pero de forma
+     independiente: cada informe tiene su propia paginación y necesidades.
+     ========================================================================== */
+
+  var PDF_NAVY = [30, 43, 111];
+  var PDF_CORAL = [224, 92, 92];
+  var PDF_GREEN = [23, 138, 107];
+  var PDF_AMBER = [199, 122, 16];
+  var PDF_INK = [20, 27, 61];
+  var PDF_INK2 = [74, 83, 120];
+  var PDF_INK3 = [122, 131, 163];
+  var PDF_LINE = [226, 229, 240];
+  var PDF_SURFACE = [243, 244, 248];
+
+  function pdfAvailable() { return !!(global.jspdf && global.jspdf.jsPDF); }
+
+  // En el PDF no hay reflujo de línea, así que basta un espacio normal: el
+  // espacio duro de UI.pct() no siempre está bien mapeado en las fuentes
+  // base de jsPDF (mismo motivo que fmtPct() en js/pdf.js).
+  function fmtPctPdf(n) { return UI.num(n) + ' %'; }
+
+  function periodLabel() {
+    if (filters.period === 'custom') {
+      return (filters.from ? UI.fmtDate(filters.from) : '…') + ' – ' + (filters.to ? UI.fmtDate(filters.to) : '…');
+    }
+    var labels = { '1m': 'Último mes', '3m': 'Últimos 3 meses', '6m': 'Últimos 6 meses', '12m': 'Último año', all: 'Todo el histórico' };
+    return labels[filters.period] || 'Periodo seleccionado';
+  }
+
+  function activeFilterLabels() {
+    var out = [];
+    if (filters.formId) { var f = Store.get('forms', filters.formId); if (f) out.push('Cuestionario: ' + f.name); }
+    if (filters.centerId) out.push('Centro: ' + Store.catalogName(filters.centerId));
+    if (filters.areaId) out.push('Área: ' + Store.catalogName(filters.areaId));
+    if (filters.severityId) out.push('Gravedad: ' + Store.catalogName(filters.severityId));
+    if (filters.categoryId) out.push('Categoría: ' + Store.catalogName(filters.categoryId));
+    activeDims().forEach(function (listId) {
+      var l = Store.get('lists', listId);
+      if (l) out.push(l.name + ': ' + Store.catalogName(dimFilters[listId]));
+    });
+    return out;
+  }
+
+  function hexToRgbLocal(hex) {
+    var c = String(hex || '#4356AE').replace('#', '');
+    if (c.length === 3) c = c[0] + c[0] + c[1] + c[1] + c[2] + c[2];
+    var r = parseInt(c.slice(0, 2), 16), g = parseInt(c.slice(2, 4), 16), b = parseInt(c.slice(4, 6), 16);
+    return isNaN(r) ? [67, 86, 174] : [r, g, b];
+  }
+
+  function buildDashboardPDF(visits, devs) {
+    var doc = new global.jspdf.jsPDF({ unit: 'mm', format: 'a4', compress: true });
+    var settings = Store.settings();
+    var M = 15, W = 210, H = 297, CW = W - M * 2;
+    var y = 0;
+    var fontState = { size: 10, style: 'normal', color: PDF_INK };
+
+    function applyFont() {
+      doc.setFont('helvetica', fontState.style);
+      doc.setFontSize(fontState.size);
+      doc.setTextColor.apply(doc, fontState.color);
+    }
+    function setFont(size, style, color) { fontState = { size: size, style: style || 'normal', color: color || PDF_INK }; applyFont(); }
+    function newPage() { doc.addPage(); y = M + 12; runningHeader(); }
+    function ensure(h) { if (y + h > H - 20) newPage(); }
+
+    function runningHeader() {
+      var saved = fontState;
+      doc.setDrawColor.apply(doc, PDF_LINE);
+      doc.setLineWidth(0.3);
+      doc.line(M, M + 4, W - M, M + 4);
+      setFont(8, 'normal', PDF_INK3);
+      doc.text(settings.appName || 'Safety Rounds', M, M + 1);
+      doc.text('Dashboard de control', W - M, M + 1, { align: 'right' });
+      fontState = saved;
+      applyFont();
+    }
+
+    function text(str, size, style, color, x, maxW) {
+      setFont(size, style, color);
+      var lines = doc.splitTextToSize(String(str == null ? '' : str), maxW || CW);
+      var lh = size * 0.4;
+      lines.forEach(function (ln) { ensure(lh + 1); doc.text(ln, x === undefined ? M : x, y); y += lh; });
+      return lines.length;
+    }
+    function gap(n) { y += n; }
+
+    function sectionTitle(t) {
+      ensure(14);
+      doc.setFillColor.apply(doc, PDF_NAVY);
+      doc.roundedRect(M, y, CW, 8, 1.8, 1.8, 'F');
+      setFont(9, 'bold', [255, 255, 255]);
+      doc.text(String(t).toUpperCase(), M + 4, y + 5.4);
+      y += 13;
+    }
+
+    function drawMiniBar(frac, color) {
+      ensure(4);
+      var barH = 3, w = CW * Math.max(0.01, Math.min(1, frac));
+      doc.setFillColor.apply(doc, PDF_SURFACE);
+      doc.roundedRect(M, y, CW, barH, 1.2, 1.2, 'F');
+      doc.setFillColor.apply(doc, color);
+      doc.roundedRect(M, y, w, barH, 1.2, 1.2, 'F');
+      y += barH + 3;
+    }
+
+    function drawStackedBar(segs) {
+      var total = segs.reduce(function (a, s) { return a + s.v; }, 0) || 1;
+      ensure(16);
+      var barH = 7, x = M;
+      doc.setFillColor.apply(doc, PDF_SURFACE);
+      doc.roundedRect(M, y, CW, barH, 2, 2, 'F');
+      segs.forEach(function (s) {
+        if (!s.v) return;
+        var w = s.v / total * CW;
+        doc.setFillColor.apply(doc, s.color);
+        doc.rect(x, y, w, barH, 'F');
+        x += w;
+      });
+      y += barH + 5;
+      var legend = segs.filter(function (s) { return s.v; }).map(function (s) {
+        return s.label + ': ' + UI.num(s.v) + ' (' + fmtPctPdf(Math.round(s.v / total * 100)) + ')';
+      }).join('    ·    ');
+      setFont(7.5, 'normal', PDF_INK2);
+      doc.text(doc.splitTextToSize(legend, CW), M, y);
+      y += 8;
+    }
+
+    function drawBarChart(labels, series) {
+      var chartH = 50, top = y;
+      var max = Math.max(1, series.reduce(function (m, s) { return Math.max(m, Math.max.apply(null, s.values.concat([0]))); }, 0));
+      max = niceMax(max);
+      var n = labels.length;
+      var groupW = CW / n;
+      var barW = Math.min(6, groupW / (series.length + 1.5));
+
+      doc.setDrawColor.apply(doc, PDF_LINE);
+      doc.setLineWidth(0.2);
+      for (var g = 0; g <= 4; g++) {
+        var gy = top + chartH - (g / 4) * chartH;
+        doc.line(M, gy, M + CW, gy);
+        setFont(6.5, 'normal', PDF_INK3);
+        doc.text(String(Math.round(max * g / 4)), M - 2, gy + 1, { align: 'right' });
+      }
+
+      var step = n > 10 ? Math.ceil(n / 8) : 1;
+      labels.forEach(function (lab, i) {
+        var gx = M + i * groupW + groupW / 2 - (series.length * barW) / 2;
+        series.forEach(function (s, si) {
+          var v = s.values[i];
+          var bh = (v / max) * chartH;
+          doc.setFillColor.apply(doc, s.color);
+          doc.rect(gx + si * barW, top + chartH - bh, barW - 0.6, bh, 'F');
+        });
+        if (i % step === 0 || i === n - 1) {
+          setFont(6, 'normal', PDF_INK3);
+          doc.text(lab, M + i * groupW + groupW / 2, top + chartH + 5, { align: 'center' });
+        }
+      });
+
+      y = top + chartH + 10;
+      var legend = series.map(function (s) {
+        return s.name + ' (' + UI.num(s.values.reduce(function (a, b) { return a + b; }, 0)) + ')';
+      }).join('    ·    ');
+      setFont(7.5, 'normal', PDF_INK2);
+      doc.text(legend, W / 2, y, { align: 'center' });
+      y += 8;
+    }
+
+    /* ---- Portada ---- */
+    doc.setFillColor.apply(doc, PDF_NAVY);
+    doc.rect(0, 0, W, 40, 'F');
+    doc.setFillColor.apply(doc, PDF_CORAL);
+    doc.rect(0, 40, W, 1.6, 'F');
+    setFont(9, 'bold', [241, 107, 107]);
+    doc.text((settings.company || settings.department || 'SAFETY & HEALTH').toUpperCase(), M, 15);
+    setFont(19, 'bold', [255, 255, 255]);
+    doc.text('Dashboard de control', M, 25);
+    setFont(9, 'normal', [200, 206, 235]);
+    doc.text(periodLabel(), M, 32);
+    setFont(8, 'normal', [200, 206, 235]);
+    doc.text(UI.fmtDateTime(new Date()), W - M, 24, { align: 'right' });
+    y = 52;
+
+    var activeFilters = activeFilterLabels();
+    if (activeFilters.length) {
+      text('Filtros activos: ' + activeFilters.join('  ·  '), 8.5, 'italic', PDF_INK3);
+      gap(4);
+    }
+
+    /* ---- KPIs ---- */
+    var openDevsN = devs.filter(function (d) { return d.status !== 'closed'; }).length;
+    var totalsK = visits.reduce(function (acc, v) { var s = v.score || {}; acc.ok += s.ok || 0; acc.ko += s.ko || 0; return acc; }, { ok: 0, ko: 0 });
+    var pctK = (totalsK.ok + totalsK.ko) ? Math.round(totalsK.ok / (totalsK.ok + totalsK.ko) * 100) : 0;
+    var overdueK = openActions().filter(isOverdue).length;
+
+    var kpis = [
+      { label: 'VISITAS', value: UI.num(visits.length), color: PDF_NAVY },
+      { label: 'DESVIACIONES', value: UI.num(devs.length), color: PDF_CORAL },
+      { label: 'ABIERTAS', value: UI.num(openDevsN), color: openDevsN ? PDF_AMBER : PDF_GREEN },
+      { label: '% CONFORMIDAD', value: fmtPctPdf(pctK), color: pctK >= 90 ? PDF_GREEN : pctK >= 70 ? PDF_AMBER : PDF_CORAL }
+    ];
+    if (overdueK) kpis.push({ label: 'VENCIDAS', value: UI.num(overdueK), color: PDF_CORAL });
+
+    var kn = kpis.length, kw = (CW - (kn - 1) * 3) / kn;
+    ensure(24);
+    kpis.forEach(function (c, i) {
+      var x = M + i * (kw + 3);
+      doc.setDrawColor.apply(doc, PDF_LINE);
+      doc.setLineWidth(0.3);
+      doc.roundedRect(x, y, kw, 20, 2.5, 2.5, 'S');
+      doc.setFillColor.apply(doc, c.color);
+      doc.roundedRect(x, y, 1.6, 20, 0.8, 0.8, 'F');
+      setFont(14, 'bold', c.color);
+      doc.text(String(c.value), x + 4, y + 10);
+      setFont(6, 'bold', PDF_INK3);
+      doc.text(doc.splitTextToSize(c.label, kw - 6), x + 4, y + 15.5);
+    });
+    y += 28;
+
+    /* ---- Evolución mensual ---- */
+    var months = monthRange(visits, devs);
+    if (months.length) {
+      sectionTitle('Evolución mensual');
+      var vCounts = months.map(function (m) { return visits.filter(function (v) { return UI.monthKey(v.date) === m; }).length; });
+      var dCounts = months.map(function (m) { return devs.filter(function (d) { return UI.monthKey(d.date) === m; }).length; });
+      ensure(65);
+      drawBarChart(months.map(UI.monthLabel), [
+        { name: 'Visitas', values: vCounts, color: PDF_NAVY },
+        { name: 'Desviaciones', values: dCounts, color: PDF_CORAL }
+      ]);
+    }
+
+    /* ---- Conformidad ---- */
+    var tC = visits.reduce(function (acc, v) { var s = v.score || {}; acc.ok += s.ok || 0; acc.ko += s.ko || 0; acc.na += s.na || 0; return acc; }, { ok: 0, ko: 0, na: 0 });
+    var baseC = tC.ok + tC.ko;
+    if (baseC || tC.na) {
+      sectionTitle('Nivel de conformidad');
+      var pctC = baseC ? Math.round(tC.ok / baseC * 100) : 0;
+      text('Conformidad global: ' + fmtPctPdf(pctC) + ' (' + UI.num(tC.ok) + ' de ' + UI.num(baseC) + ' puntos evaluados)', 10, 'bold', PDF_INK);
+      gap(3);
+      drawStackedBar([
+        { label: 'Conformes', v: tC.ok, color: PDF_GREEN },
+        { label: 'Desviaciones', v: tC.ko, color: PDF_CORAL },
+        { label: 'No aplica', v: tC.na, color: PDF_INK3 }
+      ]);
+    }
+
+    /* ---- Desglose por cuestionario ---- */
+    var byForm = {};
+    visits.forEach(function (v) {
+      var k = v.formId || 'sin';
+      byForm[k] = byForm[k] || { name: v.formName || 'Sin nombre', visits: 0, devs: 0, ok: 0, ko: 0 };
+      byForm[k].visits++;
+      byForm[k].ok += (v.score || {}).ok || 0;
+      byForm[k].ko += (v.score || {}).ko || 0;
+    });
+    devs.forEach(function (d) { var k = d.formId || 'sin'; if (byForm[k]) byForm[k].devs++; });
+    var formRows = Object.keys(byForm).map(function (k) { return byForm[k]; })
+      .sort(function (a, b) { return b.devs - a.devs || b.visits - a.visits; });
+
+    if (formRows.length) {
+      sectionTitle('Desglose por cuestionario');
+      var maxDev = Math.max.apply(null, formRows.map(function (r) { return r.devs; }).concat([1]));
+      formRows.slice(0, 8).forEach(function (r) {
+        ensure(13);
+        var baseR = r.ok + r.ko;
+        var pR = baseR ? Math.round(r.ok / baseR * 100) : null;
+        var rowY = y + 3.5;
+        setFont(9, 'bold', PDF_INK);
+        doc.text(doc.splitTextToSize(r.name, CW - 70)[0], M, rowY);
+        setFont(8, 'normal', PDF_INK3);
+        doc.text(UI.num(r.devs) + ' desv. · ' + UI.num(r.visits) + ' visitas' + (pR !== null ? ' · ' + fmtPctPdf(pR) : ''), W - M, rowY, { align: 'right' });
+        y = rowY + 3;
+        drawMiniBar(r.devs / maxDev, r.devs ? PDF_CORAL : PDF_LINE);
+        gap(2);
+      });
+    }
+
+    /* ---- Puntos que más fallan ---- */
+    var qMap = {};
+    devs.forEach(function (d) {
+      var k = d.formId + '::' + d.question;
+      qMap[k] = qMap[k] || { question: d.question, form: d.formName, n: 0 };
+      qMap[k].n++;
+    });
+    var qRows = Object.keys(qMap).map(function (k) { return qMap[k]; }).sort(function (a, b) { return b.n - a.n; }).slice(0, 7);
+    if (qRows.length) {
+      sectionTitle('Puntos que más fallan');
+      qRows.forEach(function (r) {
+        ensure(11);
+        var rowY = y + 3.5;
+        setFont(9, 'normal', PDF_INK);
+        doc.text(doc.splitTextToSize(r.question, CW - 25)[0], M, rowY);
+        setFont(8.5, 'bold', PDF_CORAL);
+        doc.text(UI.num(r.n) + '×', W - M, rowY, { align: 'right' });
+        setFont(7.5, 'normal', PDF_INK3);
+        doc.text(doc.splitTextToSize(r.form || '', CW - 25)[0], M, rowY + 4);
+        y = rowY + 8;
+      });
+    }
+
+    /* ---- Tipología de las desviaciones ---- */
+    var sevGroups = groupBy(devs, 'severityId');
+    var catGroups = groupBy(devs, 'categoryId');
+    if (devs.length && (sevGroups.length || catGroups.length)) {
+      sectionTitle('Tipología de las desviaciones');
+      if (sevGroups.length) {
+        text('Por gravedad', 8, 'bold', PDF_INK3);
+        gap(1);
+        drawStackedBar(sevGroups.map(function (g) { return { label: g.name, v: g.n, color: hexToRgbLocal(g.color) }; }));
+      }
+      if (catGroups.length) {
+        text('Por categoría de riesgo', 8, 'bold', PDF_INK3);
+        gap(1);
+        drawStackedBar(catGroups.map(function (g) { return { label: g.name, v: g.n, color: hexToRgbLocal(g.color) }; }));
+      }
+    }
+
+    /* ---- Control del plan de acción ---- */
+    var allActions = Store.all('actions');
+    if (allActions.length) {
+      sectionTitle('Control del plan de acción');
+      var openA = allActions.filter(function (a) { return a.status === 'open'; }).length;
+      var progA = allActions.filter(function (a) { return a.status === 'progress'; }).length;
+      var doneA = allActions.filter(function (a) { return a.status === 'done'; }).length;
+      var overA = allActions.filter(isOverdue).length;
+      var aStats = [
+        { label: 'ABIERTAS', v: openA, color: PDF_CORAL },
+        { label: 'EN CURSO', v: progA, color: PDF_AMBER },
+        { label: 'CERRADAS', v: doneA, color: PDF_GREEN },
+        { label: 'VENCIDAS', v: overA, color: overA ? PDF_CORAL : PDF_INK3 }
+      ];
+      var aw = (CW - 3 * 3) / 4;
+      ensure(20);
+      aStats.forEach(function (s, i) {
+        var x = M + i * (aw + 3);
+        setFont(15, 'bold', s.color);
+        doc.text(String(s.v), x, y + 8);
+        setFont(6.5, 'bold', PDF_INK3);
+        doc.text(s.label, x, y + 13);
+      });
+      y += 20;
+
+      var nextDue = allActions.filter(function (a) { return a.status !== 'done' && a.dueDate; })
+        .sort(function (a, b) { return a.dueDate < b.dueDate ? -1 : 1; }).slice(0, 6);
+      if (nextDue.length) {
+        text('Próximos vencimientos', 8, 'bold', PDF_INK3);
+        gap(2);
+        nextDue.forEach(function (a) {
+          ensure(6);
+          var days = UI.relativeDays(a.dueDate);
+          var rowY = y + 3;
+          setFont(8.5, 'normal', PDF_INK);
+          doc.text(doc.splitTextToSize(a.title, CW - 35)[0], M, rowY);
+          setFont(7.5, 'bold', days < 0 ? PDF_CORAL : days <= 7 ? PDF_AMBER : PDF_INK3);
+          doc.text(days < 0 ? 'Vencida ' + Math.abs(days) + 'd' : days === 0 ? 'Hoy' : 'En ' + days + 'd', W - M, rowY, { align: 'right' });
+          y = rowY + 4.5;
+        });
+      }
+    }
+
+    /* ---- Pie con paginación ---- */
+    var totalPages = doc.internal.getNumberOfPages();
+    for (var p = 1; p <= totalPages; p++) {
+      doc.setPage(p);
+      doc.setDrawColor.apply(doc, PDF_LINE);
+      doc.setLineWidth(0.3);
+      doc.line(M, H - 14, W - M, H - 14);
+      setFont(7.5, 'normal', PDF_INK3);
+      doc.text(settings.company || settings.department || '', M, H - 9.5);
+      doc.text('Página ' + p + ' de ' + totalPages, W - M, H - 9.5, { align: 'right' });
+      setFont(6.5, 'normal', [180, 186, 210]);
+      doc.text('Generado con ' + (settings.appName || 'Safety Rounds') + ' · ' + UI.fmtDateTime(new Date()), M, H - 5.5);
+    }
+
+    return doc;
+  }
+
+  function exportDashboardPDF(visits, devs) {
+    if (!pdfAvailable()) {
+      UI.toast('El generador de PDF no está disponible en este navegador.', 'err');
+      return;
+    }
+    var doc;
+    try {
+      doc = buildDashboardPDF(visits, devs);
+    } catch (e) {
+      console.error(e);
+      UI.toast('No se ha podido generar el PDF: ' + e.message, 'err');
+      return;
+    }
+    doc.save('dashboard-' + UI.fmtDateInput(new Date()) + '.pdf');
+    UI.toast('Dashboard descargado en PDF.');
   }
 
   /* ---------- Exportación ---------- */

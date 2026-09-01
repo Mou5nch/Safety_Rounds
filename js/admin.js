@@ -32,6 +32,19 @@
     return UI.fmtDateTime ? UI.fmtDateTime(iso) : new Date(iso).toLocaleString('es-ES');
   }
 
+  // Mismas pantallas que el menú principal (js/app.js ROUTES), para el mapa
+  // de calor de actividad por usuario.
+  var ROUTE_ORDER = ['dashboard', 'cuestionarios', 'historico', 'desviaciones', 'acciones', 'configuracion', 'ajustes'];
+  var ROUTE_META = {
+    dashboard: { label: 'Dashboard', icon: 'barChart' },
+    cuestionarios: { label: 'Cuestionarios', icon: 'clipboardList' },
+    historico: { label: 'Visitas realizadas', icon: 'checkCircle' },
+    desviaciones: { label: 'Desviaciones', icon: 'alert' },
+    acciones: { label: 'Plan de acción', icon: 'target' },
+    configuracion: { label: 'Configuración', icon: 'sliders' },
+    ajustes: { label: 'Ajustes y datos', icon: 'database' }
+  };
+
   function load() {
     Promise.all([
       fetch('/api/admin/users', { credentials: 'include' }),
@@ -118,6 +131,10 @@
           el('td', { text: fmtDuration(u.total_seconds) }),
           el('td', {}, el('div', { style: { display: 'flex', gap: '4px' } }, [
             el('button', {
+              class: 'btn btn--quiet btn--sm btn--icon', title: 'Ver actividad', html: ico('activity', 15),
+              onclick: function () { openActivity(u); }
+            }),
+            el('button', {
               class: 'btn btn--quiet btn--sm btn--icon', title: 'Restablecer contraseña', html: ico('refresh', 15),
               onclick: function () { resetPassword(u); }
             }),
@@ -140,6 +157,87 @@
     if (role === 'supervisor') return 'Supervisor';
     if (role === 'usuario') return 'Usuario (autorregistrado)';
     return 'Inspector';
+  }
+
+  /* ---------- Mapa de calor de actividad ---------- */
+
+  function openActivity(u) {
+    fetch('/api/admin/users/' + u.id + '/activity', { credentials: 'include' })
+      .then(function (res) { if (!res.ok) throw new Error(); return res.json(); })
+      .then(function (rows) { renderActivityModal(u, rows); })
+      .catch(function () { UI.toast('No se ha podido cargar la actividad de este usuario.', 'err'); });
+  }
+
+  function renderActivityModal(u, rows) {
+    var byRoute = {};
+    rows.forEach(function (r) { byRoute[r.route] = r; });
+    var totalSeconds = rows.reduce(function (a, r) { return a + r.seconds; }, 0);
+    var totalVisits = rows.reduce(function (a, r) { return a + r.visits; }, 0);
+    var maxSeconds = rows.reduce(function (m, r) { return Math.max(m, r.seconds); }, 0);
+
+    var body = el('div', {});
+
+    if (!totalVisits) {
+      body.appendChild(UI.empty('activity', 'Sin actividad todavía',
+        'Esta cuenta no ha navegado por la aplicación desde que se activó el seguimiento, o entró antes de que existiera esta función.'));
+    } else {
+      var grid = el('div', { class: 'heatmap' });
+      ROUTE_ORDER.forEach(function (key) {
+        var r = byRoute[key];
+        var seconds = r ? r.seconds : 0;
+        var visits = r ? r.visits : 0;
+        var intensity = maxSeconds ? seconds / maxSeconds : 0;
+        grid.appendChild(heatCell(ROUTE_META[key], visits, seconds, intensity));
+      });
+      body.appendChild(grid);
+
+      var ranked = ROUTE_ORDER
+        .map(function (key) { return { label: ROUTE_META[key].label, seconds: byRoute[key] ? byRoute[key].seconds : 0, visits: byRoute[key] ? byRoute[key].visits : 0 }; })
+        .filter(function (r) { return r.visits; })
+        .sort(function (a, b) { return b.seconds - a.seconds; });
+
+      var list = el('div', { class: 'bar-list', style: { marginTop: '22px' } });
+      ranked.forEach(function (r) {
+        var pct = totalSeconds ? Math.round(r.seconds / totalSeconds * 100) : 0;
+        list.appendChild(el('div', { class: 'bar-item' }, [
+          el('div', { class: 'bar-item__top' }, [
+            el('span', { class: 'bar-item__name', text: r.label }),
+            el('span', {
+              class: 'bar-item__val',
+              text: fmtDuration(r.seconds) + ' · ' + r.visits + ' ' + (r.visits === 1 ? 'visita' : 'visitas') + ' · ' + pct + ' %'
+            })
+          ]),
+          el('div', { class: 'bar-item__track' }, el('div', {
+            class: 'bar-item__fill',
+            style: { width: (maxSeconds ? r.seconds / maxSeconds * 100 : 0) + '%', background: 'linear-gradient(90deg,#4356AE,#F16B6B)' }
+          }))
+        ]));
+      });
+      body.appendChild(list);
+    }
+
+    UI.modal({
+      title: 'Actividad de ' + u.name,
+      subtitle: '@' + u.username + ' · tiempo por pantalla desde que empezó el seguimiento',
+      icon: 'activity',
+      size: 'wide',
+      body: body,
+      buttons: [{ label: 'Cerrar', kind: 'quiet' }]
+    });
+  }
+
+  function heatCell(meta, visits, seconds, intensity) {
+    var alpha = visits ? (0.10 + intensity * 0.75) : 0.05;
+    var strong = intensity > 0.55;
+    return el('div', {
+      class: 'heat-cell',
+      style: { background: 'rgba(67,86,174,' + alpha.toFixed(2) + ')', color: strong ? '#fff' : 'var(--ink)' }
+    }, [
+      el('div', { class: 'heat-cell__icon', html: ico(meta.icon, 18) }),
+      el('div', { class: 'heat-cell__label', text: meta.label }),
+      el('div', { class: 'heat-cell__value', text: visits ? fmtDuration(seconds) : '—' }),
+      el('div', { class: 'heat-cell__sub', text: visits ? (visits + ' ' + (visits === 1 ? 'visita' : 'visitas')) : 'Sin visitas' })
+    ]);
   }
 
   function sessionsCard(sessions) {
