@@ -82,7 +82,8 @@
     flag: '<path d="M4 22V4h9l1 2h6v10h-7l-1-2H4"/>',
     star: '<path d="m12 3 2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.8 6.2 20.9l1.1-6.5L2.6 9.8l6.5-.9Z"/>',
     lightbulb: '<path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a6 6 0 0 0-4 10.5c.7.8 1 1.6 1 2.5v1h6v-1c0-.9.3-1.7 1-2.5A6 6 0 0 0 12 2Z"/>',
-    move: '<path d="M12 3v18M3 12h18"/><path d="m9 6 3-3 3 3M9 18l3 3 3-3M6 9l-3 3 3 3M18 9l3 3-3 3"/>'
+    move: '<path d="M12 3v18M3 12h18"/><path d="m9 6 3-3 3 3M9 18l3 3 3-3M6 9l-3 3 3 3M18 9l3 3-3 3"/>',
+    activity: '<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>'
   };
 
   function ico(name, size) {

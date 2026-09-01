@@ -22,6 +22,7 @@
 
   function go(route, opts) {
     if (!ROUTES[route]) route = 'dashboard';
+    trackRouteChange(route);
     current = route;
     if (!(opts && opts.silent)) {
       try { history.replaceState(null, '', '#' + route); } catch (e) {}
@@ -34,6 +35,51 @@
     ROUTES[route].run();
     refreshBadges();
   }
+
+  /* ---------- Seguimiento de navegación ----------
+     Para el mapa de calor de actividad del panel de accesos: cuánto tiempo
+     pasa cada usuario en cada pantalla del menú. Solo cuenta tiempo con la
+     pestaña visible (en segundo plano se pausa el contador) y solo se manda
+     al servidor al cambiar de pantalla, ocultar la pestaña o cerrarla. */
+
+  var navTrack = { route: null, since: 0 };
+
+  function trackRouteChange(route) {
+    flushNavTrack();
+    navTrack = { route: route, since: Date.now() };
+  }
+
+  function flushNavTrack() {
+    if (!navTrack.route) return;
+    var seconds = Math.round((Date.now() - navTrack.since) / 1000);
+    var route = navTrack.route;
+    navTrack = { route: null, since: 0 };
+    if (seconds < 1) return;
+    sendNavBeacon(route, seconds);
+  }
+
+  function sendNavBeacon(route, seconds) {
+    var payload = JSON.stringify({ route: route, seconds: seconds });
+    try {
+      if (navigator.sendBeacon) {
+        var blob = new Blob([payload], { type: 'application/json' });
+        if (navigator.sendBeacon('/api/track/nav', blob)) return;
+      }
+    } catch (e) { /* sin sendBeacon: se usa fetch a continuación */ }
+    fetch('/api/track/nav', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      credentials: 'include', keepalive: true, body: payload
+    }).catch(function () { /* se pierde este dato puntual, sin más consecuencia */ });
+  }
+
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') {
+      flushNavTrack();
+    } else if (current) {
+      navTrack = { route: current, since: Date.now() };
+    }
+  });
+  window.addEventListener('pagehide', flushNavTrack);
 
   function setHeader(title, sub, actions) {
     UI.$('#pageTitle').textContent = title;

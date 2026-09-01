@@ -197,6 +197,15 @@ los datos guardados, de forma que refleja cualquier edición posterior.
 Los destinatarios por defecto de cada cuestionario se configuran en el constructor,
 en *Ajustes del cuestionario → Correos destinatarios*.
 
+**El Dashboard también se puede descargar en PDF** — el botón **Descargar PDF**
+de la cabecera genera un informe con todo lo que se ve en pantalla en ese
+momento (respeta los filtros activos: periodo, cuestionario, centro, área,
+gravedad, categoría…): los indicadores clave, la evolución mensual, el nivel
+de conformidad, el desglose por cuestionario, los puntos que más fallan, la
+tipología de las desviaciones y el control del plan de acción. Pensado para
+poder adjuntarlo a un correo o guardarlo como reporte periódico, sin tener
+que hacer capturas de pantalla.
+
 ---
 
 ## 6. Dónde se guardan los datos
@@ -441,7 +450,33 @@ avisar (más de 3 minutos sin latido = desconectado). Al pulsar «Cerrar
 sesión» se cierra al momento. El panel muestra, por usuario, el número de
 sesiones, la última conexión y el tiempo total conectado.
 
-### 10.5 Compartir una visita
+### 10.5 Mapa de actividad por usuario
+
+En el panel de accesos, cada usuario tiene un botón **Ver actividad** (icono
+de pulso, junto a los de restablecer contraseña y eliminar). Muestra, para
+esa cuenta, cuánto tiempo ha pasado en cada pantalla del menú (Dashboard,
+Cuestionarios, Visitas realizadas, Desviaciones, Plan de acción,
+Configuración, Ajustes) desde que empezó a usar la aplicación:
+
+- Un **mapa de calor**: una tarjeta por pantalla, más intensa cuanto más
+  tiempo se ha pasado en ella, con el tiempo total y el número de veces que
+  se ha entrado.
+- Una **lista ordenada** de más a menos tiempo, con el porcentaje que
+  representa cada pantalla sobre el total.
+
+El seguimiento es automático: la aplicación manda al servidor cuánto tiempo
+ha estado abierta cada pantalla al cambiar de sección, al ocultar la pestaña
+o al cerrarla (con `navigator.sendBeacon`, para que no se pierda el dato
+aunque se cierre de golpe). Solo cuenta tiempo con la pestaña visible: en
+segundo plano el contador se pausa. Los datos se guardan por usuario en
+PostgreSQL (tabla `nav_events`) y no se pueden ver por pantalla individual
+más allá de lo que ya vive en tu dispositivo (respuestas, fotos…): solo el
+tiempo y el número de visitas a cada sección.
+
+Como con el resto del seguimiento de acceso, solo hay datos desde que se
+desplegó esta función: no hay manera de reconstruir la actividad anterior.
+
+### 10.6 Compartir una visita
 
 En **Visitas realizadas**, cualquier visita finalizada tiene un botón
 **Compartir enlace** junto a los de PDF y correo. Al pulsarlo:
@@ -460,7 +495,7 @@ solo; si quieres retirarlo, bórralo con una petición
 `DELETE /api/share/<id>` (solo puede hacerlo quien lo creó, o un
 administrador).
 
-### 10.6 Si no añades PostgreSQL
+### 10.7 Si no añades PostgreSQL
 
 Importante: en cuanto despliegas con `package.json` (es decir, en cuanto
 Railway pasa a ejecutar este servidor), la aplicación empieza a pedir inicio
@@ -471,7 +506,7 @@ nadie. Si lo que quieres es la aplicación de siempre sin ningún inicio de
 sesión, despliega sin `package.json`/`server/` (opciones A-C del punto 1) en
 vez de en este servidor.
 
-### 10.7 Registro de cuentas de demostración
+### 10.8 Registro de cuentas de demostración
 
 En `login.html`, junto al formulario de acceso, hay un enlace **¿No tienes
 cuenta? Regístrate**. Es un alta pública pensada para que cualquiera pueda

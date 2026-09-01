@@ -102,6 +102,24 @@ router.post('/users/:id/reset-password', requireAdmin, async function (req, res)
   }
 });
 
+// Tiempo y número de veces que un usuario ha estado en cada pantalla del
+// menú, para el mapa de calor de actividad del panel de accesos.
+router.get('/users/:id/activity', requireAdmin, async function (req, res) {
+  try {
+    const { rows } = await pool.query(
+      `SELECT route, COUNT(*)::int AS visits, COALESCE(SUM(seconds), 0)::int AS seconds
+         FROM nav_events
+        WHERE user_id = $1
+        GROUP BY route`,
+      [req.params.id]
+    );
+    res.json(rows);
+  } catch (e) {
+    console.error('[admin] error al cargar la actividad del usuario', e);
+    res.status(500).json({ error: 'No se ha podido cargar la actividad.' });
+  }
+});
+
 router.delete('/users/:id', requireAdmin, async function (req, res) {
   try {
     await pool.query('DELETE FROM users WHERE id = $1', [req.params.id]);

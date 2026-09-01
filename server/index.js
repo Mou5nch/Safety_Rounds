@@ -18,6 +18,7 @@ const { attachUser } = require('./auth');
 const authRoutes = require('./routes/auth');
 const adminRoutes = require('./routes/admin');
 const shareRoutes = require('./routes/share');
+const trackRoutes = require('./routes/track');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = process.env.PORT || 3000;
@@ -32,6 +33,7 @@ app.use(attachUser);
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/share', shareRoutes);
+app.use('/api/track', trackRoutes);
 
 // Diagnóstico rápido de la conexión a Postgres: abre esta URL en el
 // navegador para saber, sin mirar logs, si la base de datos responde.
