@@ -109,7 +109,7 @@
             el('div', { text: u.name }),
             el('div', { class: 'hint', style: { margin: 0 }, text: '@' + u.username + (u.email ? ' · ' + u.email : ' · sin correo (recuperación solo por el admin)') })
           ]),
-          el('td', {}, el('span', { class: 'tag tag--navy', text: roleLabel(u.role) })),
+          el('td', {}, el('span', { class: 'tag ' + (u.role === 'usuario' ? 'tag--warn' : 'tag--navy'), text: roleLabel(u.role) })),
           el('td', {}, el('span', {
             class: 'tag ' + (activeByUser[u.username] ? 'tag--ok' : ''), text: activeByUser[u.username] ? 'Conectado' : 'Sin conexión'
           })),
@@ -136,7 +136,10 @@
   }
 
   function roleLabel(role) {
-    return role === 'admin' ? 'Administración' : role === 'supervisor' ? 'Supervisor' : 'Inspector';
+    if (role === 'admin') return 'Administración';
+    if (role === 'supervisor') return 'Supervisor';
+    if (role === 'usuario') return 'Usuario (autorregistrado)';
+    return 'Inspector';
   }
 
   function sessionsCard(sessions) {
@@ -181,7 +184,8 @@
     var roleEl = el('select', { class: 'select' }, [
       el('option', { value: 'inspector', text: 'Inspector' }),
       el('option', { value: 'supervisor', text: 'Supervisor' }),
-      el('option', { value: 'admin', text: 'Administración' })
+      el('option', { value: 'admin', text: 'Administración' }),
+      el('option', { value: 'usuario', text: 'Usuario (demo)' })
     ]);
 
     var body = el('div', {}, [

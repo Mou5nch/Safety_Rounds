@@ -58,7 +58,7 @@ router.get('/sessions', requireAdmin, async function (req, res) {
 router.post('/users', requireAdmin, async function (req, res) {
   const username = String((req.body && req.body.username) || '').trim().toLowerCase();
   const name = String((req.body && req.body.name) || '').trim();
-  const role = ['admin', 'supervisor', 'inspector'].indexOf(req.body && req.body.role) !== -1
+  const role = ['admin', 'supervisor', 'inspector', 'usuario'].indexOf(req.body && req.body.role) !== -1
     ? req.body.role : 'inspector';
   const password = String((req.body && req.body.password) || '');
   const email = String((req.body && req.body.email) || '').trim().toLowerCase() || null;

@@ -48,6 +48,41 @@
       </form>
 
       <button class="auth-forgot" id="forgotToggle" type="button">¿Has olvidado tu contraseña?</button>
+      <button class="auth-forgot" id="registerToggle" type="button">¿No tienes cuenta? Regístrate</button>
+    </div>
+
+    <div id="registerView" hidden>
+      <h1 class="auth-card__title">Crear cuenta</h1>
+      <p class="hint">Cuenta de demostración: se carga con datos de ejemplo para que explores la aplicación. Al ser una demo, lo que generes en tu sesión no se conserva de forma indefinida.</p>
+
+      <form id="registerForm" class="auth-form" autocomplete="on">
+        <div class="field">
+          <label class="label" for="fRegName">Nombre</label>
+          <input class="input" id="fRegName" name="name" autocomplete="name" required>
+        </div>
+        <div class="field">
+          <label class="label" for="fRegEmail">Correo</label>
+          <input class="input" id="fRegEmail" name="email" type="email" autocomplete="email" required>
+        </div>
+        <div class="field">
+          <label class="label" for="fRegPass">Contraseña</label>
+          <div class="password-field">
+            <input class="input" id="fRegPass" name="password" type="password" autocomplete="new-password" minlength="8" required>
+            <button class="password-toggle" type="button" id="fRegPassToggle" aria-label="Mostrar contraseña"></button>
+          </div>
+        </div>
+        <div class="field">
+          <label class="label" for="fRegPass2">Repite la contraseña</label>
+          <div class="password-field">
+            <input class="input" id="fRegPass2" name="password2" type="password" autocomplete="new-password" minlength="8" required>
+            <button class="password-toggle" type="button" id="fRegPass2Toggle" aria-label="Mostrar contraseña"></button>
+          </div>
+        </div>
+        <div class="auth-error" id="registerError" hidden></div>
+        <button class="btn btn--primary btn--block" type="submit" id="registerBtn">Crear cuenta</button>
+      </form>
+
+      <button class="auth-forgot" id="backToLoginFromRegister" type="button">¿Ya tienes cuenta? Inicia sesión</button>
     </div>
 
     <div id="forgotView" hidden>

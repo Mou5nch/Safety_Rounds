@@ -20,7 +20,11 @@ const router = express.Router();
 // de recuperación para bombardear un correo. Basta con esto porque el
 // proceso no se reinicia entre intentos (si Railway lo reinicia, el
 // contador vuelve a cero: no es grave).
-var LIMITS = { login: { max: 10, windowMs: 5 * 60 * 1000 }, forgot: { max: 5, windowMs: 15 * 60 * 1000 } };
+var LIMITS = {
+  login: { max: 10, windowMs: 5 * 60 * 1000 },
+  forgot: { max: 5, windowMs: 15 * 60 * 1000 },
+  register: { max: 8, windowMs: 15 * 60 * 1000 }
+};
 var attempts = new Map();
 
 function tooManyAttempts(bucket, key) {
@@ -72,6 +76,52 @@ router.post('/login', async function (req, res) {
   }
 });
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Alta pública: siempre con rol 'usuario' (cuenta de demostración), nunca
+// el que venga en el cuerpo de la petición. El correo hace de usuario para
+// entrar, así no hay que pedir un nombre de usuario aparte.
+router.post('/register', async function (req, res) {
+  const key = req.ip || 'unknown';
+  if (tooManyAttempts('register', key)) {
+    return res.status(429).json({ error: 'Demasiados intentos. Espera unos minutos y vuelve a intentarlo.' });
+  }
+
+  const name = String((req.body && req.body.name) || '').trim();
+  const email = String((req.body && req.body.email) || '').trim().toLowerCase();
+  const password = String((req.body && req.body.password) || '');
+
+  if (!name || !email || !password) {
+    registerFailure('register', key);
+    return res.status(400).json({ error: 'Indica tu nombre, correo y contraseña.' });
+  }
+  if (!EMAIL_RE.test(email)) {
+    registerFailure('register', key);
+    return res.status(400).json({ error: 'Indica un correo válido.' });
+  }
+  if (password.length < 8) {
+    registerFailure('register', key);
+    return res.status(400).json({ error: 'La contraseña debe tener al menos 8 caracteres.' });
+  }
+
+  try {
+    const hash = await hashPassword(password);
+    const { rows } = await pool.query(
+      `INSERT INTO users (username, name, role, password_hash, fictitious, email)
+       VALUES ($1, $2, 'usuario', $3, TRUE, $1) RETURNING id, username, name, role`,
+      [email, name, hash]
+    );
+    clearAttempts('register', key);
+    await createSession(rows[0].id, req, res);
+    res.status(201).json({ username: rows[0].username, name: rows[0].name, role: rows[0].role });
+  } catch (e) {
+    if (e.code === '23505') return res.status(409).json({ error: 'Ya existe una cuenta con ese correo.' });
+    registerFailure('register', key);
+    console.error('[auth] error en register', e);
+    res.status(500).json({ error: 'No se ha podido crear la cuenta.' });
+  }
+});
+
 router.post('/logout', async function (req, res) {
   try {
     await endSession(req.sessionToken);
@@ -115,7 +165,7 @@ router.post('/forgot-password', async function (req, res) {
   if (!username) return res.status(400).json({ error: 'Indica tu usuario o correo.' });
 
   try {
-    const { rows } = await pool.query('SELECT id, email, name FROM users WHERE username = $1', [username]);
+    const { rows } = await pool.query('SELECT id, email, name FROM users WHERE username = $1 OR email = $1', [username]);
     const user = rows[0];
     if (!user || !user.email) return res.json(generic);
 

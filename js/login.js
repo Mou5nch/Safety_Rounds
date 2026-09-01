@@ -21,6 +21,8 @@
     paint();
   }
   wirePasswordToggle('fPass', 'fPassToggle');
+  wirePasswordToggle('fRegPass', 'fRegPassToggle');
+  wirePasswordToggle('fRegPass2', 'fRegPass2Toggle');
 
   var form = document.getElementById('loginForm');
   var userEl = document.getElementById('fUser');
@@ -28,8 +30,16 @@
   var errEl = document.getElementById('loginError');
   var btn = document.getElementById('loginBtn');
 
-  var loginView = document.getElementById('loginView');
-  var forgotView = document.getElementById('forgotView');
+  var views = {
+    login: document.getElementById('loginView'),
+    forgot: document.getElementById('forgotView'),
+    register: document.getElementById('registerView')
+  };
+  function showView(name, focusId) {
+    Object.keys(views).forEach(function (k) { views[k].hidden = k !== name; });
+    if (focusId) { var f = document.getElementById(focusId); if (f) f.focus(); }
+  }
+
   var forgotToggle = document.getElementById('forgotToggle');
   var backToLogin = document.getElementById('backToLogin');
   var forgotForm = document.getElementById('forgotForm');
@@ -38,15 +48,27 @@
   var forgotOkEl = document.getElementById('forgotSuccess');
   var forgotBtn = document.getElementById('forgotBtn');
 
-  function showForgot(show) {
-    loginView.hidden = show;
-    forgotView.hidden = !show;
-    forgotErrEl.hidden = true;
-    forgotOkEl.hidden = true;
-    if (show) forgotUserEl.focus();
-  }
-  if (forgotToggle) forgotToggle.addEventListener('click', function () { showForgot(true); });
-  if (backToLogin) backToLogin.addEventListener('click', function () { showForgot(false); });
+  if (forgotToggle) forgotToggle.addEventListener('click', function () {
+    forgotErrEl.hidden = true; forgotOkEl.hidden = true;
+    showView('forgot', 'fForgotUser');
+  });
+  if (backToLogin) backToLogin.addEventListener('click', function () { showView('login'); });
+
+  var registerToggle = document.getElementById('registerToggle');
+  var backToLoginFromRegister = document.getElementById('backToLoginFromRegister');
+  var registerForm = document.getElementById('registerForm');
+  var regNameEl = document.getElementById('fRegName');
+  var regEmailEl = document.getElementById('fRegEmail');
+  var regPassEl = document.getElementById('fRegPass');
+  var regPass2El = document.getElementById('fRegPass2');
+  var regErrEl = document.getElementById('registerError');
+  var regBtn = document.getElementById('registerBtn');
+
+  if (registerToggle) registerToggle.addEventListener('click', function () {
+    regErrEl.hidden = true;
+    showView('register', 'fRegName');
+  });
+  if (backToLoginFromRegister) backToLoginFromRegister.addEventListener('click', function () { showView('login'); });
 
   if (forgotForm) {
     forgotForm.addEventListener('submit', function (e) {
@@ -103,6 +125,40 @@
     .then(function (res) { return res.ok ? res.json() : null; })
     .then(function (user) { if (user) { cacheAuth(user); location.replace(target()); } })
     .catch(function () { /* sin conexión: se queda en el formulario */ });
+
+  if (registerForm) {
+    registerForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      regErrEl.hidden = true;
+
+      if (regPassEl.value.length < 8) { showRegError('La contraseña debe tener al menos 8 caracteres.'); return; }
+      if (regPassEl.value !== regPass2El.value) { showRegError('Las dos contraseñas no coinciden.'); return; }
+
+      regBtn.disabled = true;
+      fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ name: regNameEl.value.trim(), email: regEmailEl.value.trim(), password: regPassEl.value })
+      }).then(function (res) {
+        return res.json().catch(function () { return {}; }).then(function (data) { return { ok: res.ok, data: data }; });
+      }).then(function (r) {
+        regBtn.disabled = false;
+        if (!r.ok) { showRegError((r.data && r.data.error) || 'No se ha podido crear la cuenta.'); return; }
+        cacheAuth(r.data);
+        try { localStorage.setItem('sr:needsDemoSeed', '1'); } catch (e) {}
+        location.replace(target());
+      }).catch(function () {
+        regBtn.disabled = false;
+        showRegError('No se ha podido conectar con el servidor. Comprueba tu conexión.');
+      });
+    });
+  }
+
+  function showRegError(msg) {
+    regErrEl.textContent = msg;
+    regErrEl.hidden = false;
+  }
 
   form.addEventListener('submit', function (e) {
     e.preventDefault();
