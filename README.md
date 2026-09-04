@@ -552,3 +552,41 @@ Para renovar el contenido de ejemplo (por ejemplo, para que las fechas de las
 visitas no queden muy desfasadas) basta con generar una copia de seguridad
 nueva desde **Ajustes y datos → Descargar copia** con una cuenta de prueba y
 sustituir el archivo `demo-data.json` del repositorio por esa exportación.
+
+---
+
+## 11. Agente de visitas periódicas
+
+`server/agents/site-visitor.js` es un pequeño script independiente, sin
+relación con la aplicación de rondas, que cada 40 minutos visita
+`www.dynhub.es` y `www.includdyn.es` y hace un pequeño recorrido por ellas:
+abre la portada, recoge los enlaces internos que encuentra y entra en varios
+de ellos (por defecto 3) con una pausa entre cada paso, como haría alguien
+navegando. No añade ninguna dependencia nueva: usa el `fetch` que ya trae
+Node 18+.
+
+**Ejecutarlo:**
+
+```bash
+npm run visit-agent
+# o directamente:
+node server/agents/site-visitor.js
+```
+
+Arranca con una primera ronda inmediata y se queda en marcha (`setInterval`)
+repitiéndola cada 40 minutos. Cada paso queda registrado por consola: sitio,
+URL visitada, código de estado y tiempo de respuesta; si una web falla o
+tarda más de 15 segundos, lo avisa sin detener el resto de la ronda.
+
+Es un proceso aparte, pensado para lanzarse con `pm2`, como tarea
+programada del sistema, o como un segundo servicio en Railway con este
+comando de arranque — no se ejecuta junto al servidor principal
+(`npm start`).
+
+**Variables de entorno opcionales:**
+
+| Variable | Para qué sirve | Por defecto |
+|---|---|---|
+| `VISIT_INTERVAL_MINUTES` | Minutos entre cada ronda. | `40` |
+| `VISIT_TOUR_SIZE` | Nº de enlaces internos a visitar además de la portada. | `3` |
+| `VISIT_RUN_ONCE` | Con `true`, hace una sola ronda y termina (para probarlo a mano). | — |

@@ -5,7 +5,8 @@
   "description": "Safety Rounds — servidor Node para enlaces compartidos y seguimiento de acceso",
   "main": "server/index.js",
   "scripts": {
-    "start": "node server/index.js"
+    "start": "node server/index.js",
+    "visit-agent": "node server/agents/site-visitor.js"
   },
   "engines": {
     "node": ">=18"
