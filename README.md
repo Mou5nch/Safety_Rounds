@@ -562,12 +562,16 @@ relación con la aplicación de rondas, que cada 40 minutos visita
 `www.dynhub.es` y `www.includdyn.es` y hace un pequeño recorrido por ellas:
 abre la portada, recoge los enlaces internos que encuentra y entra en varios
 de ellos (por defecto 3) con una pausa entre cada paso, como haría alguien
-navegando. No añade ninguna dependencia nueva: usa el `fetch` que ya trae
-Node 18+.
+navegando. Es un chequeo de disponibilidad y tiempo de respuesta (estilo
+*uptime monitor*): no está pensado para generar tráfico ni para que las
+visitas cuenten como usuarios en Google Analytics o Search Console — cada
+ronda se identifica con su propio user-agent (`SafetyRoundsSiteVisitor`)
+precisamente para poder distinguirse de tráfico humano.
 
 **Ejecutarlo:**
 
 ```bash
+npm install   # trae la única dependencia que usa: undici
 npm run visit-agent
 # o directamente:
 node server/agents/site-visitor.js
@@ -575,13 +579,29 @@ node server/agents/site-visitor.js
 
 Arranca con una primera ronda inmediata y se queda en marcha (`setInterval`)
 repitiéndola cada 40 minutos. Cada paso queda registrado por consola: sitio,
-URL visitada, código de estado y tiempo de respuesta; si una web falla o
-tarda más de 15 segundos, lo avisa sin detener el resto de la ronda.
+ubicación, URL visitada, código de estado y tiempo de respuesta; si una web
+falla o tarda más de 15 segundos, lo avisa sin detener el resto de la ronda.
 
 Es un proceso aparte y autónomo: no se ejecuta junto al servidor principal
 (`npm start`) ni depende de él. Se lanza donde convenga —un ordenador o
 servidor propio, `pm2`, una tarea programada del sistema, un contenedor
 aparte…— con el único requisito de tener Node 18 o superior.
+
+**Comprobar desde varias ubicaciones geográficas.** Por defecto todas las
+rondas salen desde la red donde se ejecute el script. Si además quieres ver
+cómo responde cada web desde otras ubicaciones (latencia, CDN, algún
+proveedor de hosting regional que dé problemas…), define `VISIT_LOCATIONS`
+con tus propios proxies —un VPS o VPN propios en esa región, o un proveedor
+de pruebas de red de tu confianza—: el agente no inventa ni rota IPs por su
+cuenta, solo enruta cada comprobación a través del proxy que le indiques.
+
+```bash
+VISIT_LOCATIONS="Madrid=http://usuario:clave@1.2.3.4:3128,Frankfurt=http://usuario:clave@5.6.7.8:3128" npm run visit-agent
+```
+
+Cada ronda se repite una vez por cada ubicación de la lista, y los logs
+dicen desde cuál se hizo cada comprobación. Sin esta variable, se ejecuta
+una sola pasada local, como hasta ahora.
 
 **Variables de entorno opcionales:**
 
@@ -589,4 +609,5 @@ aparte…— con el único requisito de tener Node 18 o superior.
 |---|---|---|
 | `VISIT_INTERVAL_MINUTES` | Minutos entre cada ronda. | `40` |
 | `VISIT_TOUR_SIZE` | Nº de enlaces internos a visitar además de la portada. | `3` |
+| `VISIT_LOCATIONS` | Lista `nombre=proxy` separada por comas para comprobar desde varias ubicaciones (ver arriba). | una sola pasada local |
 | `VISIT_RUN_ONCE` | Con `true`, hace una sola ronda y termina (para probarlo a mano). | — |

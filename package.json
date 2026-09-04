@@ -9,13 +9,14 @@
     "visit-agent": "node server/agents/site-visitor.js"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=18.17"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "cookie-parser": "^1.4.6",
     "express": "^4.19.2",
     "nodemailer": "^9.0.5",
-    "pg": "^8.11.5"
+    "pg": "^8.11.5",
+    "undici": "^6.28.0"
   }
 }
