@@ -578,10 +578,10 @@ repitiéndola cada 40 minutos. Cada paso queda registrado por consola: sitio,
 URL visitada, código de estado y tiempo de respuesta; si una web falla o
 tarda más de 15 segundos, lo avisa sin detener el resto de la ronda.
 
-Es un proceso aparte, pensado para lanzarse con `pm2`, como tarea
-programada del sistema, o como un segundo servicio en Railway con este
-comando de arranque — no se ejecuta junto al servidor principal
-(`npm start`).
+Es un proceso aparte y autónomo: no se ejecuta junto al servidor principal
+(`npm start`) ni depende de él. Se lanza donde convenga —un ordenador o
+servidor propio, `pm2`, una tarea programada del sistema, un contenedor
+aparte…— con el único requisito de tener Node 18 o superior.
 
 **Variables de entorno opcionales:**
 
