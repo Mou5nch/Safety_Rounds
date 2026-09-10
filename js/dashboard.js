@@ -272,7 +272,46 @@
     if (overdue) {
       box.appendChild(kpi('Acciones vencidas', UI.num(overdue), 'clock', 'Han superado la fecha límite', null, 'coral'));
     }
+
+    var recurItems = Recurrence.upcoming();
+    if (recurItems.length) {
+      box.appendChild(kpiUpcomingVisits(recurItems));
+    }
     return box;
+  }
+
+  /** KPI de cuestionarios recurrentes: próxima fecha por cuestionario y centro. */
+  function kpiUpcomingVisits(items) {
+    var overdueN = items.filter(function (i) { return i.overdue; }).length;
+    var soonCount = items.filter(function (i) { return i.daysUntil <= 30; }).length;
+
+    var foot = el('div', { style: { marginTop: '9px', display: 'flex', flexDirection: 'column', gap: '6px' } });
+    items.slice(0, 3).forEach(function (i) {
+      var color = i.overdue ? 'var(--coral-dark)' : i.daysUntil <= 7 ? 'var(--warn)' : 'var(--navy-soft)';
+      foot.appendChild(el('div', { style: { display: 'flex', alignItems: 'center', gap: '7px', fontSize: '12px' } }, [
+        el('span', { style: { width: '6px', height: '6px', borderRadius: '50%', background: color, flex: 'none' } }),
+        el('span', {
+          style: { flex: '1', minWidth: '0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--ink-2)' },
+          title: i.formName + ' · ' + i.centerName,
+          text: i.formName + ' · ' + i.centerName
+        }),
+        el('span', { style: { flex: 'none', fontWeight: '700', color: color }, text: Recurrence.dueLabel(i.daysUntil) })
+      ]));
+    });
+    if (items.length > 3) {
+      foot.appendChild(el('div', { style: { fontSize: '11.5px', color: 'var(--ink-3)' }, text: '+' + (items.length - 3) + ' más' }));
+    }
+    foot.appendChild(el('button', {
+      style: { marginTop: '2px', fontSize: '12px', fontWeight: '650', color: 'var(--navy)', textAlign: 'left' },
+      text: 'Ver calendario →',
+      onclick: function () { App.go('calendario'); }
+    }));
+
+    return el('div', { class: 'kpi kpi--' + (overdueN ? 'coral' : 'navy') }, [
+      el('div', { class: 'kpi__label' }, [el('span', { html: ico('calendar', 14) }), el('span', { text: 'Próximas visitas' })]),
+      el('div', { class: 'kpi__value', text: UI.num(soonCount) }),
+      foot
+    ]);
   }
 
   function kpi(label, value, icon, foot, footNode, kind) {

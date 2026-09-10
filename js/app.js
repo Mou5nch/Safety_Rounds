@@ -8,6 +8,7 @@
 
   var ROUTES = {
     dashboard:     { title: 'Dashboard', run: function () { Dashboard.render(); } },
+    calendario:    { title: 'Calendario', run: function () { Calendar.render(); } },
     cuestionarios: { title: 'Cuestionarios', run: function () { Lists.forms('run'); } },
     historico:     { title: 'Visitas realizadas', run: function () { Lists.history(); } },
     desviaciones:  { title: 'Desviaciones', run: function () { Lists.deviations(); } },

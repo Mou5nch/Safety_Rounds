@@ -281,7 +281,8 @@
       emails: [],
       autoSend: false,
       fields: [],
-      archived: false
+      archived: false,
+      recurrence: Recurrence.defaultRecurrence()
     };
   }
 
@@ -289,6 +290,7 @@
     var form = formId ? Store.clone(Store.get('forms', formId)) : newForm();
     if (!form) { UI.toast('El cuestionario ya no existe.', 'err'); App.go('configuracion'); return; }
     if (!form.fields) form.fields = [];
+    if (!form.recurrence) form.recurrence = Recurrence.defaultRecurrence();
     state = { form: form, selectedId: null, isNew: !formId };
     render();
   }
@@ -1158,6 +1160,87 @@
     return s.length > n ? s.slice(0, n - 1) + '…' : s;
   }
 
+  /* ---------- Periodicidad (no obligatoria) ---------- */
+
+  /**
+   * Cada cuánto se ha de repetir este cuestionario, centro a centro. No es
+   * obligatorio: con la periodicidad desactivada, el cuestionario funciona
+   * exactamente igual que antes. Activada, alimenta el KPI «Próximas
+   * visitas» del Dashboard y el apartado Calendario del menú.
+   */
+  function recurrenceProps() {
+    var form = state.form;
+    if (!form.recurrence) form.recurrence = Recurrence.defaultRecurrence();
+    var rec = form.recurrence;
+
+    var sec = el('div', { class: 'props-section' }, [
+      el('div', { class: 'props-section__title', html: ico('refresh', 12) + '<span>Periodicidad</span>' })
+    ]);
+    sec.appendChild(el('div', {
+      class: 'hint', style: { marginBottom: '12px', marginTop: '-4px' },
+      text: 'Márcalo como recurrente para que su próxima fecha aparezca, centro a centro, en el Calendario y en el Dashboard.'
+    }));
+    sec.appendChild(el('div', { class: 'field' }, mkSwitch('Cuestionario recurrente', !!rec.enabled, function (v) {
+      rec.enabled = v; refresh();
+    })));
+
+    if (!rec.enabled) return sec;
+
+    var freqSel = UI.selectFrom(Recurrence.FREQUENCIES.map(function (f) { return { value: f.value, label: f.label }; }),
+      rec.freq || 'monthly', { class: 'select' });
+    freqSel.addEventListener('change', function () { rec.freq = freqSel.value; refresh(); });
+    sec.appendChild(UI.field('Frecuencia', freqSel));
+
+    if (rec.freq === 'custom') {
+      var days = el('input', {
+        class: 'input', type: 'number', min: '1', max: '3650', value: rec.customDays || 30,
+        oninput: function () { rec.customDays = Math.max(1, parseInt(days.value, 10) || 30); }
+      });
+      sec.appendChild(UI.field('Cada cuántos días', days));
+    }
+
+    var centers = Store.catalog('center');
+    if (!centers.length) {
+      sec.appendChild(el('div', {
+        class: 'hint', style: { marginBottom: '10px' },
+        text: 'Todavía no has dado de alta ningún centro. La periodicidad necesita al menos uno para calcular la próxima visita.'
+      }));
+      sec.appendChild(el('button', {
+        class: 'btn btn--ghost btn--sm btn--block',
+        html: ico('plus', 15) + '<span>Dar de alta centros en Ajustes</span>',
+        onclick: function () { App.go('ajustes'); }
+      }));
+      return sec;
+    }
+
+    sec.appendChild(el('label', { class: 'label', style: { marginBottom: '8px' }, text: 'Centros donde se repite' }));
+    var list = el('div', { style: { display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '4px' } });
+    centers.forEach(function (c) {
+      var checked = (rec.centerIds || []).indexOf(c.id) !== -1;
+      var input = el('input', { type: 'checkbox', checked: checked });
+      var row = el('label', { class: 'check' + (checked ? ' is-on' : '') }, [
+        input, el('span', { class: 'check__text', text: c.name })
+      ]);
+      input.addEventListener('change', function () {
+        rec.centerIds = rec.centerIds || [];
+        if (input.checked) {
+          if (rec.centerIds.indexOf(c.id) === -1) rec.centerIds.push(c.id);
+        } else {
+          rec.centerIds = rec.centerIds.filter(function (id) { return id !== c.id; });
+        }
+        row.classList.toggle('is-on', input.checked);
+      });
+      list.appendChild(row);
+    });
+    sec.appendChild(list);
+
+    if (!(rec.centerIds || []).length) {
+      sec.appendChild(el('div', { class: 'hint', text: 'Selecciona al menos un centro para que la periodicidad tenga efecto.' }));
+    }
+
+    return sec;
+  }
+
   /* ---------- Propiedades del cuestionario ---------- */
 
   function formProps() {
@@ -1214,6 +1297,9 @@
     sec.appendChild(el('div', { class: 'field' }, mkSwitch('Proponer el envío al cerrar la visita',
       !!state.form.autoSend, function (v) { state.form.autoSend = v; })));
     box.appendChild(sec);
+
+    // Periodicidad
+    box.appendChild(recurrenceProps());
 
     // Resumen
     var qCount = state.form.fields.filter(isQuestion).length;
