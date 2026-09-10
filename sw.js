@@ -7,7 +7,7 @@
 // Al subir este nombre, la activación borra las cachés anteriores: es lo que
 // hace que quien tenga la aplicación instalada reciba de verdad la versión
 // nueva en lugar de seguir con los archivos guardados de la anterior.
-var CACHE = 'safety-rounds-v8';
+var CACHE = 'safety-rounds-v9';
 
 var ASSETS = [
   './',
@@ -22,11 +22,13 @@ var ASSETS = [
   'js/store.js',
   'js/ui.js',
   'js/seed.js',
+  'js/recurrence.js',
   'js/builder.js',
   'js/runner.js',
   'js/pdf.js',
   'js/dashboard.js',
   'js/lists.js',
+  'js/calendar.js',
   'js/settings.js',
   'js/share.js',
   'js/auth.js',
@@ -45,9 +47,12 @@ var ASSETS = [
 self.addEventListener('install', function (e) {
   e.waitUntil(
     caches.open(CACHE).then(function (c) {
-      // addAll falla en bloque si un solo recurso da error: se añaden de uno en uno
+      // addAll falla en bloque si un solo recurso da error: se añaden de uno en uno.
+      // cache:'reload' evita que esta precarga reutilice una respuesta que el propio
+      // navegador tuviera guardada en su caché HTTP normal: sin esto, una versión
+      // nueva del service worker podría precargar igualmente archivos antiguos.
       return Promise.all(ASSETS.map(function (url) {
-        return c.add(url).catch(function () { /* recurso opcional */ });
+        return c.add(new Request(url, { cache: 'reload' })).catch(function () { /* recurso opcional */ });
       }));
     }).then(function () { return self.skipWaiting(); })
   );
