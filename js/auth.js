@@ -9,6 +9,7 @@
   'use strict';
 
   var HEARTBEAT_MS = 60 * 1000;
+  var IDLE_TIMEOUT_MS = 30 * 60 * 1000;
 
   function cached() {
     try { return JSON.parse(localStorage.getItem('sr:auth') || 'null'); } catch (e) { return null; }
@@ -18,9 +19,9 @@
     try { localStorage.removeItem('sr:auth'); } catch (e) {}
   }
 
-  function goToLogin() {
+  function goToLogin(reason) {
     clearCache();
-    location.href = 'login.html';
+    location.href = 'login.html' + (reason ? '?reason=' + encodeURIComponent(reason) : '');
   }
 
   function paint(user) {
@@ -64,6 +65,47 @@
       .then(function () { goToLogin(); });
   }
 
+  /* ---------- Cierre de sesión por inactividad ----------
+     30 minutos sin ningún gesto del usuario (ratón, teclado, toque, scroll)
+     cierran la sesión igual que el botón de salir, tanto aquí como en el
+     servidor (que también rechaza el latido y cualquier petición si la
+     sesión lleva ese tiempo sin actividad): así no basta con dejar la
+     pestaña abierta para que login.html, al comprobar /api/auth/me, te
+     devuelva sin más a la aplicación. */
+
+  var ACTIVITY_EVENTS = ['mousedown', 'mousemove', 'keydown', 'wheel', 'touchstart', 'scroll'];
+  var lastActivity = Date.now();
+  var lastActivityWrite = 0;
+  var idleTimer = null;
+
+  function idleLogout() {
+    fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
+      .catch(function () {})
+      .then(function () { goToLogin('inactivity'); });
+  }
+
+  function resetIdleTimer() {
+    lastActivity = Date.now();
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(idleLogout, IDLE_TIMEOUT_MS);
+  }
+
+  function onActivity() {
+    // Un mousemove dispara decenas de eventos por segundo: de sobra con
+    // reiniciar el temporizador una vez cada pocos segundos.
+    var now = Date.now();
+    if (now - lastActivityWrite < 5000) return;
+    lastActivityWrite = now;
+    resetIdleTimer();
+  }
+
+  function initIdleTimer() {
+    ACTIVITY_EVENTS.forEach(function (evt) {
+      document.addEventListener(evt, onActivity, { passive: true });
+    });
+    resetIdleTimer();
+  }
+
   function init() {
     var user = cached();
     if (user) paint(user);
@@ -72,9 +114,15 @@
     if (btn) btn.addEventListener('click', logout);
 
     verifyWithServer();
+    initIdleTimer();
     setInterval(heartbeat, HEARTBEAT_MS);
     document.addEventListener('visibilitychange', function () {
-      if (document.visibilityState === 'visible') heartbeat();
+      if (document.visibilityState !== 'visible') return;
+      // Un temporizador en segundo plano puede quedar pausado por el
+      // navegador: al volver a la pestaña se comprueba el tiempo real
+      // transcurrido en vez de fiarse de que ya hubiera saltado solo.
+      if (Date.now() - lastActivity >= IDLE_TIMEOUT_MS) { idleLogout(); return; }
+      heartbeat();
     });
   }
 

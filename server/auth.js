@@ -13,6 +13,7 @@ const { pool } = require('./db');
 
 const COOKIE_NAME = 'sr_session';
 const COOKIE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 días
+const IDLE_TIMEOUT_MINUTES = 30; // sin actividad, la sesión deja de ser válida
 
 function hashPassword(plain) {
   return bcrypt.hash(plain, 10);
@@ -51,16 +52,33 @@ async function endSession(token) {
   await pool.query(`UPDATE sessions SET logout_at = now(), last_seen_at = now() WHERE id = $1 AND logout_at IS NULL`, [token]);
 }
 
+/**
+ * Refresca la sesión si sigue viva, o la da por terminada si lleva
+ * IDLE_TIMEOUT_MINUTES sin latido. Se cierra de verdad (logout_at = su
+ * último last_seen_at) en vez de dejarla «colgada»: es lo que hace que el
+ * panel de accesos muestre cuándo terminó de verdad la conexión, no cuándo
+ * alguien se dio cuenta.
+ */
 async function touchSession(token) {
   if (!token) return null;
   const { rows } = await pool.query(
-    `UPDATE sessions SET last_seen_at = now() WHERE id = $1 AND logout_at IS NULL RETURNING user_id`,
-    [token]
+    `UPDATE sessions SET last_seen_at = now()
+      WHERE id = $1 AND logout_at IS NULL
+        AND last_seen_at > now() - ($2 * interval '1 minute')
+      RETURNING user_id`,
+    [token, IDLE_TIMEOUT_MINUTES]
   );
-  return rows[0] || null;
+  if (rows[0]) return rows[0];
+  await pool.query(
+    `UPDATE sessions SET logout_at = last_seen_at
+      WHERE id = $1 AND logout_at IS NULL
+        AND last_seen_at <= now() - ($2 * interval '1 minute')`,
+    [token, IDLE_TIMEOUT_MINUTES]
+  );
+  return null;
 }
 
-/** Adjunta req.user (y req.sessionToken) si la cookie de sesión es válida. No bloquea si no lo es. */
+/** Adjunta req.user (y req.sessionToken) si la cookie de sesión es válida y sigue activa. No bloquea si no lo es. */
 async function attachUser(req, res, next) {
   const token = req.cookies ? req.cookies[COOKIE_NAME] : null;
   req.sessionToken = token || null;
@@ -70,8 +88,9 @@ async function attachUser(req, res, next) {
     const { rows } = await pool.query(
       `SELECT u.id, u.username, u.name, u.role
          FROM sessions s JOIN users u ON u.id = s.user_id
-        WHERE s.id = $1 AND s.logout_at IS NULL`,
-      [token]
+        WHERE s.id = $1 AND s.logout_at IS NULL
+          AND s.last_seen_at > now() - ($2 * interval '1 minute')`,
+      [token, IDLE_TIMEOUT_MINUTES]
     );
     req.user = rows[0] || null;
   } catch (e) {
