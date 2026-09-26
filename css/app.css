@@ -1043,6 +1043,10 @@ tr:hover .row-actions { opacity: 1; }
   background: var(--ok-wash); color: var(--ok); border-radius: var(--r-sm);
   font-size: 13px; font-weight: 600; padding: 10px 12px; margin-bottom: 14px; line-height: 1.5;
 }
+.auth-info {
+  background: var(--navy-wash); color: var(--navy); border-radius: var(--r-sm);
+  font-size: 13px; font-weight: 600; padding: 10px 12px; margin-bottom: 14px; line-height: 1.5;
+}
 
 .auth-forgot {
   display: block; width: 100%; text-align: center; margin-top: 16px;

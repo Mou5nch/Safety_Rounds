@@ -28,7 +28,13 @@
   var userEl = document.getElementById('fUser');
   var passEl = document.getElementById('fPass');
   var errEl = document.getElementById('loginError');
+  var infoEl = document.getElementById('loginInfo');
   var btn = document.getElementById('loginBtn');
+
+  if (infoEl && new URLSearchParams(location.search).get('reason') === 'inactivity') {
+    infoEl.textContent = 'Se ha cerrado tu sesión automáticamente tras 30 minutos sin actividad. Vuelve a iniciar sesión.';
+    infoEl.hidden = false;
+  }
 
   var views = {
     login: document.getElementById('loginView'),
