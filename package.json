@@ -6,7 +6,8 @@
   "main": "server/index.js",
   "scripts": {
     "start": "node server/index.js",
-    "test:api": "node tests/sync-api.test.mjs"
+    "test:api": "node tests/sync-api.test.mjs",
+    "test:access": "node tests/access-api.test.mjs"
   },
   "engines": {
     "node": ">=18"

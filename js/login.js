@@ -108,15 +108,37 @@
     });
   }
 
-  function target() {
+  /** Dirección pedida expresamente con ?next=… (solo rutas del propio sitio), o null. */
+  function explicitNext() {
     var next = new URLSearchParams(location.search).get('next');
-    return (next && next.charAt(0) === '/' && next.charAt(1) !== '/' && next.charAt(1) !== '\\') ? next : 'index.html';
+    return (next && next.charAt(0) === '/' && next.charAt(1) !== '/' && next.charAt(1) !== '\\') ? next : null;
+  }
+
+  /**
+   * A dónde va quien acaba de entrar:
+   *  · con acceso a Safety Desk y a Safety Go → pantalla de elección (entrar.html),
+   *    con Safety Desk como opción predeterminada;
+   *  · con acceso a una sola → directamente a ella, sin pantalla intermedia;
+   *  · si venía de un enlace concreto (?next=), se respeta mientras tenga acceso a esa
+   *    parte; si no, se le lleva a la que sí tiene.
+   */
+  function route(user) {
+    var a = (user && user.access) || { desk: true, go: !user || user.role !== 'usuario' };
+    var next = explicitNext();
+    if (next) {
+      var toGo = next.indexOf('/campo') === 0;
+      if (toGo && !a.go) return 'index.html';
+      if (!toGo && !a.desk) return '/campo/';
+      return next;
+    }
+    if (a.desk && a.go) return 'entrar.html';
+    return a.go ? '/campo/' : 'index.html';
   }
 
   function cacheAuth(user) {
     try {
       localStorage.setItem('sr:auth', JSON.stringify({
-        username: user.username, name: user.name, role: user.role, cachedAt: Date.now()
+        username: user.username, name: user.name, role: user.role, access: user.access, cachedAt: Date.now()
       }));
     } catch (e) { /* modo privado: sin efecto, se volverá a pedir la sesión */ }
   }
@@ -129,7 +151,7 @@
   // Si ya hay una sesión abierta en el servidor, entra directo.
   fetch('/api/auth/me', { credentials: 'include' })
     .then(function (res) { return res.ok ? res.json() : null; })
-    .then(function (user) { if (user) { cacheAuth(user); location.replace(target()); } })
+    .then(function (user) { if (user) { cacheAuth(user); location.replace(route(user)); } })
     .catch(function () { /* sin conexión: se queda en el formulario */ });
 
   if (registerForm) {
@@ -152,7 +174,7 @@
         regBtn.disabled = false;
         if (!r.ok) { showRegError((r.data && r.data.error) || 'No se ha podido crear la cuenta.'); return; }
         cacheAuth(r.data);
-        location.replace(target());
+        location.replace(route(r.data));
       }).catch(function () {
         regBtn.disabled = false;
         showRegError('No se ha podido conectar con el servidor. Comprueba tu conexión.');
@@ -178,7 +200,7 @@
         username: userEl.value.trim(), password: passEl.value,
         // Quien entra desde la WebApp de campo obtiene una sesión que no caduca
         // a los 30 minutos: en planta el móvil pasa horas bloqueado o sin red.
-        client: target().indexOf('/campo') === 0 ? 'campo' : undefined
+        client: (explicitNext() || '').indexOf('/campo') === 0 ? 'campo' : undefined
       })
     }).then(function (res) {
       return res.json().catch(function () { return {}; }).then(function (data) { return { ok: res.ok, data: data }; });
@@ -186,7 +208,7 @@
       btn.disabled = false;
       if (!r.ok) { showError((r.data && r.data.error) || 'No se ha podido iniciar sesión.'); return; }
       cacheAuth(r.data);
-      location.replace(target());
+      location.replace(route(r.data));
     }).catch(function () {
       btn.disabled = false;
       showError('No se ha podido conectar con el servidor. Comprueba tu conexión.');

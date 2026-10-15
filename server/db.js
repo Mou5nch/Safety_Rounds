@@ -99,6 +99,14 @@ async function initSchema() {
     );
     CREATE INDEX IF NOT EXISTS nav_events_user_id_idx ON nav_events(user_id);
 
+    -- Qué versiones de la aplicación puede usar cada persona: Safety Desk (gestión,
+    -- en ordenador) y Safety Go (campo). NULL = valor por defecto según el rol
+    -- (ver accessFrom en server/auth.js): así no hace falta tocar las cuentas
+    -- existentes y un cambio hecho a mano desde el panel de accesos no se pisa
+    -- en el siguiente arranque.
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS access_desk BOOLEAN;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS access_go BOOLEAN;
+
     -- Duración de inactividad propia de cada sesión: la WebApp de campo
     -- necesita ventanas más largas que los 30 minutos del navegador de
     -- escritorio (el móvil se bloquea en el bolsillo entre una ronda y otra).

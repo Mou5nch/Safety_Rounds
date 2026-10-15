@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Safety Rounds · Campo</title>
+<title>Safety Go</title>
 <meta name="description" content="Herramienta de trabajo en campo conectada con Safety Rounds: calendario, cuestionarios, desviaciones y plan de acción.">
 <meta name="theme-color" content="#1E2B6F">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Campo">
+<meta name="apple-mobile-web-app-title" content="Safety Go">
 <meta name="robots" content="noindex, nofollow">
 
 <link rel="manifest" href="manifest.webmanifest">
@@ -30,7 +30,11 @@
 // La sesión real se confirma con el servidor desde js/shell.js cuando hay red.
 (function () {
   try {
-    if (!localStorage.getItem('sr:auth')) location.replace('../login.html?next=/campo/');
+    var raw = localStorage.getItem('sr:auth');
+    if (!raw) { location.replace('../login.html?next=/campo/'); return; }
+    // Una cuenta sin acceso a Safety Go (solo gestión) va a Safety Desk
+    var access = (JSON.parse(raw) || {}).access;
+    if (access && access.go === false) location.replace('../index.html');
   } catch (e) { /* almacenamiento bloqueado: se deja pasar, store.js ya avisa */ }
 })();
 </script>

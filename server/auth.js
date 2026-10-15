@@ -15,6 +15,21 @@ const COOKIE_NAME = 'sr_session';
 const COOKIE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 días
 const IDLE_TIMEOUT_MINUTES = 30; // sin actividad, la sesión deja de ser válida
 
+/**
+ * Versiones de la aplicación a las que tiene acceso un usuario.
+ *   desk: Safety Desk (gestión)    go: Safety Go (campo)
+ * Sin valor guardado: todos los perfiles reales tienen ambas y las cuentas de
+ * demostración ('usuario') solo Desk. Dos reglas fijas: la administración
+ * siempre conserva Desk (si no, nadie podría volver a gestionar los accesos) y
+ * nadie se queda sin acceso a nada.
+ */
+function accessFrom(u) {
+  let desk = (u.access_desk === null || u.access_desk === undefined) ? true : !!u.access_desk;
+  const go = (u.access_go === null || u.access_go === undefined) ? u.role !== 'usuario' : !!u.access_go;
+  if (u.role === 'admin' || (!desk && !go)) desk = true;
+  return { desk: desk, go: go };
+}
+
 function hashPassword(plain) {
   return bcrypt.hash(plain, 10);
 }
@@ -92,13 +107,18 @@ async function attachUser(req, res, next) {
   if (!token) return next();
   try {
     const { rows } = await pool.query(
-      `SELECT u.id, u.username, u.name, u.role
+      `SELECT u.id, u.username, u.name, u.role, u.access_desk, u.access_go
          FROM sessions s JOIN users u ON u.id = s.user_id
         WHERE s.id = $1 AND s.logout_at IS NULL
           AND s.last_seen_at > now() - (COALESCE(s.idle_minutes, $2) * interval '1 minute')`,
       [token, IDLE_TIMEOUT_MINUTES]
     );
     req.user = rows[0] || null;
+    if (req.user) {
+      req.user.access = accessFrom(req.user);
+      delete req.user.access_desk;
+      delete req.user.access_go;
+    }
   } catch (e) {
     console.error('[auth] error al resolver la sesión', e);
   }
@@ -119,6 +139,7 @@ function requireAdmin(req, res, next) {
 module.exports = {
   COOKIE_NAME,
   FIELD_IDLE_MINUTES,
+  accessFrom,
   hashPassword,
   verifyPassword,
   createSession,

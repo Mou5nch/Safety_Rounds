@@ -7,17 +7,19 @@
 // Al subir este nombre, la activación borra las cachés anteriores: es lo que
 // hace que quien tenga la aplicación instalada reciba de verdad la versión
 // nueva en lugar de seguir con los archivos guardados de la anterior.
-var CACHE = 'safety-rounds-v13';
+var CACHE = 'safety-rounds-v14';
 
 var ASSETS = [
   './',
   'index.html',
   'login.html',
+  'entrar.html',
   'admin.html',
   'report.html',
   'reset-password.html',
   'manifest.webmanifest',
   'css/app.css',
+  'css/entrar.css',
   'js/icons.js',
   'js/store.js',
   'js/sync.js',
@@ -35,6 +37,7 @@ var ASSETS = [
   'js/share.js',
   'js/auth.js',
   'js/login.js',
+  'js/entrar.js',
   'js/admin.js',
   'js/report-viewer.js',
   'js/reset-password.js',

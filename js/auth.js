@@ -32,6 +32,15 @@
     if (nameEl) nameEl.textContent = user.name || user.username;
     var adminLink = document.getElementById('navAdmin');
     if (adminLink) adminLink.hidden = user.role !== 'admin';
+
+    // «Cambiar a Safety Go»: solo para quien tiene acceso a las dos versiones
+    var a = user.access || { desk: true, go: user.role !== 'usuario' };
+    var sw = document.getElementById('switchGo');
+    if (sw) {
+      sw.hidden = !(a.desk && a.go);
+      document.getElementById('switchGoIcon').innerHTML = ico('smartphone', 20);
+      document.getElementById('switchGoChev').innerHTML = ico('chevronRight', 18);
+    }
   }
 
   function verifyWithServer() {
@@ -45,16 +54,21 @@
       if (!user) return;
       try {
         localStorage.setItem('sr:auth', JSON.stringify({
-          username: user.username, name: user.name, role: user.role, cachedAt: Date.now()
+          username: user.username, name: user.name, role: user.role, access: user.access, cachedAt: Date.now()
         }));
       } catch (e) {}
+      // Si le quitan el acceso a Safety Desk mientras tiene la pantalla abierta, se le lleva a Safety Go
+      if (user.access && user.access.desk === false) { location.replace('/campo/'); return; }
       paint(user);
     }).catch(function () { /* sin conexión: se sigue con la copia local */ });
   }
 
   function heartbeat() {
     if (!navigator.onLine) return;
-    fetch('/api/auth/heartbeat', { method: 'POST', credentials: 'include' }).then(function (res) {
+    fetch('/api/auth/heartbeat', {
+      method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ client: 'desk' })
+    }).then(function (res) {
       if (res.status === 401) goToLogin();
     }).catch(function () { /* sin efecto: se reintenta en el siguiente latido */ });
   }

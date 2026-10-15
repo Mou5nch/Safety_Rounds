@@ -7,6 +7,7 @@
   'use strict';
 
   var P = {
+    monitor: '<rect x="2" y="3" width="20" height="14" rx="2.5"/><path d="M8 21h8M12 17v4"/>',
     home: '<path d="m3 11 9-8 9 8"/><path d="M5 10v10h5v-6h4v6h5V10"/>',
     cloudOff: '<path d="m2 2 20 20"/><path d="M5.8 9.3A5 5 0 0 0 7 19h10.5a4.5 4.5 0 0 0 1.9-.4"/><path d="M10 5.3a6 6 0 0 1 8.2 4.7A4.5 4.5 0 0 1 21 14"/>',
     cloud: '<path d="M17.5 19a4.5 4.5 0 1 0-1.1-8.9A6 6 0 0 0 5 11.5 3.8 3.8 0 0 0 7 19Z"/>',

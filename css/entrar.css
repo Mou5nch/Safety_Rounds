@@ -1,0 +1,149 @@
+/* ==========================================================================
+   Safety Rounds — Pantalla «¿Cómo quieres entrar?»
+   Se ve tras iniciar sesión, solo con cuentas que tienen acceso a las dos
+   versiones: Safety Desk (gestión) y Safety Go (campo). Dos tarjetas grandes
+   sobre el azul de marca; la elegida se vuelve blanca y se marca con coral.
+   ========================================================================== */
+
+.entrar-body {
+  min-height: 100vh; min-height: 100dvh; margin: 0;
+  color: #fff; background-color: var(--navy);
+  background-image:
+    radial-gradient(70% 55% at 85% 105%, rgba(241, 107, 107, .30) 0%, transparent 60%),
+    radial-gradient(90% 70% at 0% 0%, rgba(67, 86, 174, .65) 0%, transparent 62%),
+    linear-gradient(165deg, #1E2B6F 0%, #26357F 60%, #1E2B6F 100%);
+  background-attachment: fixed;
+}
+.entrar[hidden] { display: none; }
+
+.entrar {
+  min-height: 100vh; min-height: 100dvh;
+  max-width: 980px; margin: 0 auto;
+  padding: calc(env(safe-area-inset-top, 0px) + 18px) 20px calc(env(safe-area-inset-bottom, 0px) + 28px);
+  display: flex; flex-direction: column;
+}
+
+/* ---------- Cabecera ---------- */
+.entrar__top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.entrar__brand { display: flex; align-items: center; gap: 11px; font-size: 17px; font-weight: 700; letter-spacing: -.02em; }
+.entrar__mark {
+  width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center;
+  background: rgba(255, 255, 255, .1); border: 1px solid rgba(255, 255, 255, .18);
+}
+.entrar__link {
+  color: rgba(255, 255, 255, .78); font-size: 14px; font-weight: 600; min-height: 44px; padding: 0 6px;
+  border-radius: 10px; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: rgba(255, 255, 255, .35);
+}
+.entrar__link:hover { color: #fff; }
+
+/* ---------- Saludo ---------- */
+.entrar__hero { margin: 34px 0 26px; animation: entrar-in .5s var(--ease) both; }
+/* La cabecera se queda arriba y el resto se centra en el espacio que queda */
+.entrar__top { margin-bottom: auto; }
+.entrar__actions { margin-bottom: auto; }
+.entrar__hello { margin: 0 0 6px; font-size: 16px; font-weight: 600; color: rgba(255, 255, 255, .72); }
+.entrar__title { margin: 0; font-size: clamp(30px, 6vw, 44px); font-weight: 700; letter-spacing: -.035em; line-height: 1.08; }
+.entrar__sub { margin: 12px 0 0; max-width: 520px; font-size: 15.5px; line-height: 1.55; color: rgba(255, 255, 255, .72); }
+
+/* ---------- Tarjetas ---------- */
+.entrar__choices { display: grid; grid-template-columns: 1fr; gap: 14px; }
+
+.choice {
+  position: relative; display: flex; align-items: center; gap: 16px; cursor: pointer;
+  padding: 18px 54px 18px 18px; border-radius: 26px; text-align: left;
+  background: rgba(255, 255, 255, .08); border: 1.5px solid rgba(255, 255, 255, .18);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  transition: transform .18s var(--ease), background .18s var(--ease), border-color .18s var(--ease), box-shadow .18s var(--ease);
+  animation: entrar-in .5s var(--ease) both;
+  -webkit-tap-highlight-color: transparent;
+}
+.choice:nth-child(2) { animation-delay: .07s; }
+.choice:hover { background: rgba(255, 255, 255, .13); transform: translateY(-2px); }
+.choice:active { transform: scale(.99); }
+.choice__input { position: absolute; opacity: 0; pointer-events: none; }
+.choice:focus-within { outline: 3px solid rgba(255, 255, 255, .8); outline-offset: 3px; }
+
+.choice__icon {
+  width: 64px; height: 64px; flex: none; border-radius: 20px; display: grid; place-items: center;
+  background: rgba(255, 255, 255, .14); color: #fff; transition: background .18s var(--ease), color .18s var(--ease);
+}
+.choice__body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.choice__name { font-size: 22px; font-weight: 700; letter-spacing: -.03em; line-height: 1.15; }
+.choice__tag { margin-top: 3px; font-size: 14.5px; font-weight: 550; color: rgba(255, 255, 255, .78); transition: color .18s var(--ease); }
+.choice__list { display: none; margin: 14px 0 0; padding: 0; list-style: none; font-size: 14px; line-height: 1.4; }
+.choice__list li { position: relative; padding: 3px 0 3px 22px; color: rgba(255, 255, 255, .82); transition: color .18s var(--ease); }
+.choice__list li::before {
+  content: ''; position: absolute; left: 2px; top: 9px; width: 10px; height: 6px;
+  border-left: 2px solid #F16B6B; border-bottom: 2px solid #F16B6B; transform: rotate(-45deg);
+}
+
+.choice__badge {
+  /* En el móvil la etiqueta cabalga sobre el borde superior de la tarjeta, para no tapar el nombre */
+  position: absolute; top: -12px; right: 62px; height: 24px; padding: 0 11px; border-radius: 12px;
+  display: inline-flex; align-items: center; font-size: 11.5px; font-weight: 700; letter-spacing: .02em;
+  background: #3A4A9E; color: #fff; border: 1.5px solid rgba(255, 255, 255, .28);
+}
+.choice__badge[hidden] { display: none; }
+.choice__badge--here { background: rgba(255, 255, 255, .22); }
+
+/* Marca de selección */
+.choice__check {
+  position: absolute; top: 50%; right: 16px; width: 28px; height: 28px; margin-top: -14px; border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, .4); display: grid; place-items: center; color: #fff;
+  transition: background .18s var(--ease), border-color .18s var(--ease), transform .18s var(--ease);
+}
+.choice__check svg { opacity: 0; transform: scale(.5); transition: opacity .18s var(--ease), transform .18s var(--ease); }
+
+/* Tarjeta elegida */
+.choice.is-on {
+  background: #fff; border-color: #fff; color: var(--ink); transform: none;
+  box-shadow: 0 0 0 4px rgba(241, 107, 107, .85), 0 22px 44px rgba(8, 12, 40, .38);
+}
+.choice.is-on .choice__icon { background: var(--navy-wash); color: var(--navy); }
+.choice.is-on .choice__tag { color: var(--ink-2); }
+.choice.is-on .choice__list li { color: var(--ink-2); }
+.choice.is-on .choice__badge { background: var(--coral); color: #fff; border-color: #fff; }
+.choice.is-on .choice__check { background: var(--coral); border-color: var(--coral); }
+.choice.is-on .choice__check svg { opacity: 1; transform: none; }
+
+/* ---------- Botón y pie ---------- */
+.entrar__actions { margin-top: 24px; animation: entrar-in .5s .14s var(--ease) both; }
+.entrar__go {
+  width: 100%; min-height: 60px; padding: 0 22px; border-radius: 18px;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  font-size: 17px; font-weight: 700; letter-spacing: -.01em; color: #fff;
+  background: linear-gradient(135deg, #F57878 0%, #E05C5C 100%);
+  box-shadow: 0 12px 28px rgba(241, 107, 107, .45);
+  transition: transform .12s var(--ease), box-shadow .15s var(--ease);
+}
+.entrar__go:hover { box-shadow: 0 16px 34px rgba(241, 107, 107, .55); }
+.entrar__go:active { transform: scale(.985); }
+.entrar__go:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+.entrar__go:disabled { opacity: .7; pointer-events: none; }
+.entrar__who { margin: 16px 0 0; text-align: center; font-size: 14px; color: rgba(255, 255, 255, .7); }
+.entrar__who button { color: #fff; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; min-height: 40px; padding: 0 4px; }
+
+@keyframes entrar-in { from { opacity: 0; transform: translateY(14px); } }
+
+/* ---------- Pantallas grandes: dos tarjetas altas, lado a lado ---------- */
+@media (min-width: 760px) {
+  .entrar { padding-left: 32px; padding-right: 32px; }
+  .entrar__hero { margin: 28px 0 30px; }
+  .entrar__choices { grid-template-columns: 1fr 1fr; gap: 20px; }
+  .choice { flex-direction: column; align-items: flex-start; gap: 20px; padding: 28px 28px 30px; min-height: 340px; }
+  .choice__icon { width: 76px; height: 76px; border-radius: 24px; }
+  .choice__name { font-size: 28px; }
+  .choice__tag { font-size: 16px; }
+  .choice__list { display: block; }
+  .choice__badge { top: 26px; right: 74px; border-color: transparent; background: rgba(255, 255, 255, .16); }
+  .choice.is-on .choice__badge { border-color: transparent; background: var(--navy-wash); color: var(--navy); }
+  .choice__check { top: 24px; right: 24px; margin-top: 0; width: 32px; height: 32px; }
+  .entrar__actions { display: flex; align-items: center; gap: 22px; margin-top: 30px; }
+  .entrar__go { width: auto; min-width: 320px; }
+  .entrar__who { margin: 0; text-align: left; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .entrar__hero, .choice, .entrar__actions { animation: none; }
+  .choice, .choice__check, .choice__check svg { transition: none; }
+}

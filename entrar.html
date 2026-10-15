@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>¿Cómo quieres entrar? — Safety Rounds</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#1E2B6F">
+<link rel="icon" href="icons/favicon.svg" type="image/svg+xml">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/entrar.css">
+</head>
+<body class="entrar-body">
+
+<script>
+// Sin sesión no hay nada que elegir. La sesión real se confirma con el servidor en js/entrar.js.
+(function () {
+  try { if (!localStorage.getItem('sr:auth')) location.replace('login.html'); } catch (e) {}
+})();
+</script>
+
+<main class="entrar" id="entrar" hidden>
+  <header class="entrar__top">
+    <div class="entrar__brand">
+      <span class="entrar__mark" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 100 100" fill="none"><path d="M50 10 L86 25 V52 C86 71 71 85 50 92 C29 85 14 71 14 52 V25 Z" stroke="#fff" stroke-width="7"/><path d="M34 51 L45 62 L67 38" stroke="#F16B6B" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </span>
+      <span>Safety Rounds</span>
+    </div>
+    <button class="entrar__link" id="eLogoutTop" type="button">Cerrar sesión</button>
+  </header>
+
+  <section class="entrar__hero">
+    <p class="entrar__hello" id="eHello">Hola</p>
+    <h1 class="entrar__title">¿Cómo quieres entrar?</h1>
+    <p class="entrar__sub" id="eSub">Tu cuenta tiene acceso a las dos versiones. Puedes cambiar de una a otra cuando quieras desde el menú.</p>
+  </section>
+
+  <form class="entrar__choices" id="eForm" role="radiogroup" aria-label="Versión de Safety Rounds">
+
+    <label class="choice" data-choice="desk">
+      <input class="choice__input" type="radio" name="version" value="desk">
+      <span class="choice__badge" id="eBadgeDesk">Predeterminada</span>
+      <span class="choice__icon" id="eIconDesk" aria-hidden="true"></span>
+      <span class="choice__body">
+        <span class="choice__name">Safety Desk</span>
+        <span class="choice__tag">Gestión y análisis</span>
+        <ul class="choice__list">
+          <li>Dashboard e indicadores</li>
+          <li>Configuración de cuestionarios</li>
+          <li>Visitas, desviaciones y plan de acción</li>
+        </ul>
+      </span>
+      <span class="choice__check" id="eCheckDesk" aria-hidden="true"></span>
+    </label>
+
+    <label class="choice" data-choice="go">
+      <input class="choice__input" type="radio" name="version" value="go">
+      <span class="choice__badge choice__badge--here" id="eHereGo" hidden>Estás aquí</span>
+      <span class="choice__icon" id="eIconGo" aria-hidden="true"></span>
+      <span class="choice__body">
+        <span class="choice__name">Safety Go</span>
+        <span class="choice__tag">Trabajo en planta</span>
+        <ul class="choice__list">
+          <li>Calendario de rondas</li>
+          <li>Visitas con fotos y firma</li>
+          <li>Funciona sin conexión</li>
+        </ul>
+      </span>
+      <span class="choice__check" id="eCheckGo" aria-hidden="true"></span>
+    </label>
+
+  </form>
+
+  <div class="entrar__actions">
+    <button class="entrar__go" id="eGo" type="button"><span id="eGoText">Entrar en Safety Desk</span><span id="eGoArrow" aria-hidden="true"></span></button>
+    <p class="entrar__who" id="eWho"></p>
+  </div>
+</main>
+
+<script src="js/icons.js"></script>
+<script src="js/entrar.js"></script>
+</body>
+</html>

@@ -1,7 +1,7 @@
 {
-  "name": "Safety Rounds · Campo",
-  "short_name": "Campo",
-  "description": "Herramienta de trabajo en campo conectada con Safety Rounds: calendario, cuestionarios, desviaciones y plan de acción. Funciona sin conexión.",
+  "name": "Safety Go — Safety Rounds",
+  "short_name": "Safety Go",
+  "description": "Safety Go: la versión de campo de Safety Rounds — calendario, cuestionarios, desviaciones y plan de acción en planta. Funciona sin conexión.",
   "id": "/campo/",
   "start_url": "/campo/",
   "scope": "/campo/",
@@ -11,15 +11,63 @@
   "theme_color": "#1E2B6F",
   "lang": "es",
   "dir": "ltr",
-  "categories": ["business", "productivity"],
+  "categories": [
+    "business",
+    "productivity"
+  ],
   "icons": [
-    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
   ],
   "shortcuts": [
-    { "name": "Nueva visita", "short_name": "Visita", "url": "/campo/#forms", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
-    { "name": "Calendario", "short_name": "Calendario", "url": "/campo/#calendar", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
-    { "name": "Desviaciones", "short_name": "Desviaciones", "url": "/campo/#deviations", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] }
+    {
+      "name": "Nueva visita",
+      "short_name": "Visita",
+      "url": "/campo/#forms",
+      "icons": [
+        {
+          "src": "/icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Calendario",
+      "short_name": "Calendario",
+      "url": "/campo/#calendar",
+      "icons": [
+        {
+          "src": "/icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Desviaciones",
+      "short_name": "Desviaciones",
+      "url": "/campo/#deviations",
+      "icons": [
+        {
+          "src": "/icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
   ]
 }
