@@ -80,6 +80,24 @@
     ]);
   }
 
+  function formRow(f, dueByForm) {
+    var color = f.color || '#1E2B6F';
+    var questions = (f.fields || []).filter(function (x) { return Builder.isQuestion(x); }).length;
+    var due = dueByForm[f.id];
+    var dueTag = due ? Campo.tag(due.overdue ? 'Vencida' : due.daysUntil === 0 ? 'Toca hoy' : 'En ' + due.daysUntil + ' d',
+      due.overdue ? 'danger' : due.daysUntil <= 7 ? 'warn' : 'navy', 'calendar') : null;
+    var freq = f.recurrence && f.recurrence.enabled ? Recurrence.freqLabel(f.recurrence) : '';
+
+    return Campo.listRow({
+      color: color,
+      title: f.name, sub: f.description || null,
+      meta: [dueTag, freq ? Campo.tag(freq, '', 'refresh') : null, questions + (questions === 1 ? ' pregunta' : ' preguntas')],
+      cells: [freq || '—', dueTag || '—', String(questions)],
+      end: [Campo.rowButton('play', 'Iniciar visita', function () { startVisit(f); }, 'primary')],
+      onclick: function () { startVisit(f); }
+    });
+  }
+
   function segNew(view) {
     var folders = Store.all('folders').sort(function (a, b) { return (a.order || 0) - (b.order || 0); });
     var forms = Store.all('forms').filter(function (f) { return !f.archived; });
@@ -91,7 +109,7 @@
       if (!prev || u.date < prev.date) dueByForm[u.formId] = u;
     });
 
-    view.appendChild(Campo.searchBox(st.q, 'Buscar cuestionario…', function (v) { st.q = v; Shell.render(); }));
+    view.appendChild(Campo.filterRow('forms-new', Campo.searchBox(st.q, 'Buscar cuestionario…', function (v) { st.q = v; Shell.render(); })));
     if (folders.length > 1) {
       view.appendChild(Campo.chips([{ value: '', label: 'Todos' }].concat(folders.map(function (f) {
         return { value: f.id, label: f.name, color: f.color };
@@ -115,6 +133,12 @@
         forms.length ? 'Prueba con otra búsqueda.' : 'Los cuestionarios se crean en la APP principal y llegan aquí al sincronizar.'));
       return;
     }
+    if (Campo.viewMode('forms-new') === 'list') {
+      var box = Campo.listBox('6px minmax(0,2.6fr) 150px 150px 100px 56px', ['', 'Cuestionario', 'Periodicidad', 'Próxima ronda', 'Preguntas', '']);
+      shown.forEach(function (f) { box.appendChild(formRow(f, dueByForm)); });
+      view.appendChild(box);
+      return;
+    }
     var grid = el('div', { class: 'f-grid' });
     shown.forEach(function (f) { grid.appendChild(formCard(f, dueByForm)); });
     view.appendChild(grid);
@@ -130,11 +154,35 @@
     }).sort(function (a, b) { return (b.updatedAt || '') < (a.updatedAt || '') ? -1 : 1; });
   }
 
+  function draftRow(v) {
+    var s = v.score || {};
+    var plant = v.centerId ? Store.catalogName(v.centerId) : '';
+    return Campo.listRow({
+      color: '#E3A02F',
+      title: v.formName || 'Visita',
+      sub: 'Última edición ' + UI.fmtDateTime(v.updatedAt),
+      meta: [UI.fmtDate(v.date), plant || null, s.total ? UI.num(s.ok + s.ko) + ' respondidas' : null],
+      cells: [UI.fmtDate(v.date), plant || '—', UI.fmtDateTime(v.updatedAt)],
+      end: [
+        Campo.rowButton('play', 'Seguir la visita', function () { Shell.runVisit(v.formId, v.id); }, 'primary'),
+        Campo.rowButton('trash', 'Descartar borrador', function () { removeVisit(v); })
+      ],
+      onclick: function () { Shell.runVisit(v.formId, v.id); }
+    });
+  }
+
   function segDrafts(view) {
     var rows = drafts();
+    view.appendChild(Campo.filterRow('forms-drafts', null));
     if (!rows.length) {
       view.appendChild(Campo.empty('edit', 'No tienes visitas sin terminar',
         'Cuando guardes una visita como borrador o salgas sin terminarla, podrás retomarla desde aquí.'));
+      return;
+    }
+    if (Campo.viewMode('forms-drafts') === 'list') {
+      var box = Campo.listBox('6px minmax(0,2.4fr) 110px minmax(0,1fr) 170px 100px', ['', 'Visita', 'Fecha', 'Planta', 'Última edición', '']);
+      rows.forEach(function (v) { box.appendChild(draftRow(v)); });
+      view.appendChild(box);
       return;
     }
     var list = el('div', { class: 'f-list' });
@@ -208,9 +256,27 @@
     ]);
   }
 
+  function doneRow(v) {
+    var s = v.score || { ok: 0, ko: 0, pct: 0, total: 0 };
+    var col = UI.scoreColor(s.pct);
+    var where = [v.centerId ? Store.catalogName(v.centerId) : '', v.areaId ? Store.catalogName(v.areaId) : ''].filter(Boolean).join(' · ');
+    var dev = s.ko ? Campo.tag(s.ko + (s.ko === 1 ? ' desviación' : ' desviaciones'), 'danger', 'alert') : (s.total ? Campo.tag('Sin desviaciones', 'ok', 'check') : null);
+    var mail = mailChip(v);
+
+    return Campo.listRow({
+      color: s.total ? col.fg : 'var(--ink-3)',
+      title: v.formName || 'Visita',
+      sub: v.code,
+      meta: [s.total ? Campo.tag(UI.pct(s.pct), s.pct >= 90 ? 'ok' : s.pct >= 70 ? 'warn' : 'danger') : null, UI.fmtDate(v.date), where || null, dev, mail],
+      cells: [v.code, UI.fmtDate(v.date), where || '—', dev || '—', s.total ? UI.pct(s.pct) : '—', mail || '—'],
+      end: [el('span', { class: 'f-item__chev', html: ico('chevronRight', 20) })],
+      onclick: function () { openVisit(v.id); }
+    });
+  }
+
   function segDone(view) {
     var all = done();
-    view.appendChild(Campo.searchBox(st.q, 'Referencia, cuestionario, inspector…', function (v) { st.q = v; Shell.render(); }));
+    view.appendChild(Campo.filterRow('forms-done', Campo.searchBox(st.q, 'Referencia, cuestionario, inspector…', function (v) { st.q = v; Shell.render(); })));
 
     // Chips por cuestionario (solo los que tienen visitas)
     var seen = {}, opts = [{ value: '', label: 'Todos' }];
@@ -233,6 +299,13 @@
       return;
     }
     view.appendChild(el('div', { class: 'f-count', text: UI.num(rows.length) + ' ' + UI.plural(rows.length, 'visita') }));
+    if (Campo.viewMode('forms-done') === 'list') {
+      var box = Campo.listBox('6px minmax(0,2fr) 140px 100px minmax(0,1fr) 140px 90px 130px 28px',
+        ['', 'Cuestionario', 'Referencia', 'Fecha', 'Planta · Área', 'Desviaciones', '% conforme', 'Correo', '']);
+      rows.forEach(function (v) { box.appendChild(doneRow(v)); });
+      view.appendChild(box);
+      return;
+    }
     var grid = el('div', { class: 'f-list f-list--grid' });
     rows.forEach(function (v) { grid.appendChild(visitRow(v)); });
     view.appendChild(grid);

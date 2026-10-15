@@ -349,6 +349,60 @@ a.btn { text-decoration: none; }
 .f-filterbar span { display: inline-flex; align-items: center; gap: 7px; }
 
 /* ==========================================================================
+   Tarjetas o lista
+   ========================================================================== */
+.f-filterrow { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.f-filterrow .f-search { flex: 1; min-width: 0; margin-bottom: 0; }
+.f-filterrow--end { justify-content: flex-end; }
+.f-viewtoggle { display: flex; flex: none; gap: 2px; padding: 4px; background: #E6E9F3; border-radius: 14px; }
+.f-viewtoggle__btn { width: 46px; height: 42px; border-radius: 11px; display: grid; place-items: center; color: var(--ink-2); }
+.f-viewtoggle__btn.is-on { background: #fff; color: var(--navy); box-shadow: 0 1px 4px rgba(20, 27, 61, .14); }
+
+/* En el móvil la lista son filas de dos o tres líneas; en pantalla ancha, una tabla con cabecera */
+.f-table { background: #fff; border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--f-card); overflow: hidden; }
+.f-table__head { display: none; }
+.f-lrow {
+  position: relative; display: grid; grid-template-columns: 5px minmax(0, 1fr) auto; align-items: center; column-gap: 12px;
+  padding: 12px 12px 12px 0; min-height: 70px; border-bottom: 1px solid var(--line-soft); cursor: pointer;
+  transition: background .12s var(--ease);
+}
+.f-lrow:last-child { border-bottom: 0; }
+.f-lrow:hover, .f-lrow:active { background: #F8F9FD; }
+.f-lrow:focus-visible { outline: 2px solid var(--navy-soft); outline-offset: -2px; }
+.f-lrow__lead { align-self: stretch; margin: 6px 0; border-radius: 0 4px 4px 0; background: var(--lead, var(--navy-soft)); }
+.f-lrow__main { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.f-lrow__title {
+  font-size: 15px; font-weight: 650; letter-spacing: -.01em; line-height: 1.3;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;
+}
+.f-lrow__sub { font-size: 13px; color: var(--ink-2); line-height: 1.4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.f-lrow__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 5px 8px; margin-top: 5px; font-size: 12.5px; color: var(--ink-3); font-weight: 500; }
+.f-lrow__meta .tag { height: 24px; font-size: 12px; }
+.f-lrow__cell { display: none; }
+.f-lrow__end { display: flex; align-items: center; gap: 6px; }
+.f-lrow.is-closed .f-lrow__title { color: var(--ink-2); }
+.f-lrow.is-overdue { background: linear-gradient(90deg, rgba(241, 107, 107, .06), transparent 40%); }
+.f-rowbtn { width: 44px; height: 44px; flex: none; border-radius: 50%; display: grid; place-items: center; color: var(--ink-2); background: var(--surface); transition: transform .1s var(--ease); }
+.f-rowbtn:active { transform: scale(.92); }
+.f-rowbtn--ok { background: var(--ok-wash); color: var(--ok); }
+.f-rowbtn--primary { background: var(--coral); color: #fff; box-shadow: var(--shadow-coral); }
+
+@media (min-width: 820px) {
+  .f-table__head {
+    display: grid; grid-template-columns: var(--cols); column-gap: 12px; padding: 11px 12px 11px 0;
+    background: var(--surface); border-bottom: 1px solid var(--line);
+    font-size: 11.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3);
+  }
+  .f-lrow { grid-template-columns: var(--cols); min-height: 62px; padding-top: 9px; padding-bottom: 9px; }
+  .f-lrow__meta { display: none; }
+  .f-lrow__title { display: block; white-space: nowrap; text-overflow: ellipsis; font-size: 14.5px; }
+  .f-lrow__cell { display: block; min-width: 0; font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .f-lrow__cell .tag { height: 24px; font-size: 12px; }
+  .f-lrow__end { justify-content: flex-end; }
+  .f-rowbtn { width: 40px; height: 40px; }
+}
+
+/* ==========================================================================
    Inicio
    ========================================================================== */
 .f-hello { margin: 4px 2px 16px; }

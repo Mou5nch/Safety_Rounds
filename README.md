@@ -584,6 +584,14 @@ sus pendientes. Se recuerda en el dispositivo y, al empezar una visita, la deja 
 situada en esa planta. Las plantas son los *Centros e instalaciones* de la APP
 principal.
 
+**Tarjetas o lista.** Desviaciones, Acciones y los tres apartados de Cuestionarios
+(*Nueva*, *Sin terminar* y *Realizadas*) se pueden ver en **tarjetas** o en **lista**
+con el conmutador que hay junto al buscador. La elección se recuerda por apartado en
+el dispositivo. En el móvil la lista son filas compactas con una franja del color de
+la gravedad o del plazo; en tablet y pantallas anchas es una tabla con cabecera y
+columnas (gravedad, planta, fecha, plazo, estado…). Las acciones rápidas (cerrar,
+reabrir, seguir, descartar) están también en cada fila.
+
 **Adaptación a móvil y tablet.** Navegación inferior en móvil y lateral en tablet
 horizontal; objetivos táctiles de 48 px o más; tipografía de 16 px en los campos
 (evita el zoom automático de iOS); ventanas que suben desde abajo; zonas seguras

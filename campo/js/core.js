@@ -272,6 +272,99 @@
     return el('div', { class: 'f-search' }, [el('span', { class: 'f-search__icon', html: ico('search', 18) }), input]);
   }
 
+  /* ======================================================================
+     Tarjetas o lista
+     ----------------------------------------------------------------------
+     Cada apartado con tarjetas puede verse también en lista. La elección se
+     recuerda por apartado en este dispositivo. En una pantalla ancha la lista
+     es una tabla con cabecera; en el móvil son filas compactas de dos líneas.
+     ====================================================================== */
+
+  function viewMode(key) {
+    try { return localStorage.getItem('sr:campo:view:' + key) === 'list' ? 'list' : 'cards'; } catch (e) { return 'cards'; }
+  }
+
+  function setViewMode(key, mode) {
+    try { localStorage.setItem('sr:campo:view:' + key, mode); } catch (e) {}
+  }
+
+  function viewToggle(key) {
+    var cur = viewMode(key);
+    function btn(mode, icon, label) {
+      return el('button', {
+        class: 'f-viewtoggle__btn' + (cur === mode ? ' is-on' : ''), type: 'button',
+        'aria-label': label, 'aria-pressed': cur === mode ? 'true' : 'false', title: label,
+        html: ico(icon, 20),
+        onclick: function () { if (cur !== mode) { setViewMode(key, mode); Shell.render(); } }
+      });
+    }
+    return el('div', { class: 'f-viewtoggle', role: 'group', 'aria-label': 'Forma de mostrar' }, [
+      btn('cards', 'grid', 'Ver en tarjetas'), btn('list', 'list', 'Ver en lista')
+    ]);
+  }
+
+  /** Fila con el buscador (si se indica) y el conmutador tarjetas/lista. */
+  function filterRow(key, search) {
+    return el('div', { class: 'f-filterrow' + (search ? '' : ' f-filterrow--end') }, [search || null, viewToggle(key)]);
+  }
+
+  /**
+   * Contenedor de lista. cols: plantilla de columnas para pantalla ancha
+   * (lead · principal · …celdas… · acciones); labels: cabecera de esas columnas.
+   */
+  function listBox(cols, labels) {
+    var box = el('div', { class: 'f-table' });
+    box.style.setProperty('--cols', cols);    // UI.el no sabe asignar variables CSS
+    box.appendChild(el('div', { class: 'f-table__head', 'aria-hidden': 'true' }, labels.map(function (l) { return el('span', { text: l }); })));
+    return box;
+  }
+
+  /**
+   * Fila de lista.
+   *   color   color de la franja lateral
+   *   title, sub   texto principal y secundario (una línea cada uno)
+   *   meta    [Node|string] — se ve debajo del título en el móvil
+   *   cells   [Node|string] — columnas de la tabla en pantalla ancha
+   *   end     [Node] — acciones rápidas (los clics no abren la ficha)
+   */
+  function listRow(o) {
+    var row = el('div', {
+      class: 'f-lrow' + (o.cls ? ' ' + o.cls : ''), role: 'button', tabindex: '0'
+    });
+    if (o.color) row.style.setProperty('--lead', o.color);
+    row.addEventListener('click', function () { if (o.onclick) o.onclick(); });
+    row.addEventListener('keydown', function (e) {
+      if ((e.key === 'Enter' || e.key === ' ') && e.target === row) { e.preventDefault(); if (o.onclick) o.onclick(); }
+    });
+
+    row.appendChild(el('span', { class: 'f-lrow__lead' }));
+    row.appendChild(el('div', { class: 'f-lrow__main' }, [
+      el('span', { class: 'f-lrow__title', text: o.title || '' }),
+      o.sub ? el('span', { class: 'f-lrow__sub', text: o.sub }) : null,
+      (o.meta && o.meta.length) ? el('span', { class: 'f-lrow__meta' }, o.meta.filter(Boolean).map(function (m) {
+        // Un nodo del DOM solo puede tener un padre: el mismo avance (p. ej. la etiqueta
+        // de estado) se usa en la línea del móvil y en la columna de la tabla, así que
+        // aquí va una copia.
+        return typeof m === 'string' ? el('span', { class: 'f-lrow__m', text: m }) : m.cloneNode(true);
+      })) : null
+    ]));
+    (o.cells || []).forEach(function (c) {
+      row.appendChild(el('div', { class: 'f-lrow__cell' }, c === null || c === undefined || c === '' ? '—' : (typeof c === 'string' ? document.createTextNode(c) : c)));
+    });
+    var end = el('div', { class: 'f-lrow__end' }, (o.end || []).filter(Boolean));
+    end.addEventListener('click', function (e) { e.stopPropagation(); });
+    row.appendChild(end);
+    return row;
+  }
+
+  /** Botón redondo de una fila (cerrar, reabrir, borrar…). */
+  function rowButton(icon, label, onclick, kind) {
+    return el('button', {
+      class: 'f-rowbtn' + (kind ? ' f-rowbtn--' + kind : ''), type: 'button', 'aria-label': label, title: label,
+      html: ico(icon, 20), onclick: function (e) { e.stopPropagation(); onclick(e); }
+    });
+  }
+
   /** Botón de añadir foto (cámara en móvil) → onAdd(dataURL) */
   function photoButton(onAdd, label) {
     var input = el('input', { type: 'file', accept: 'image/*', style: { display: 'none' } });
@@ -307,6 +400,8 @@
     sheet: sheet, lightbox: lightbox,
     tag: tag, colorTag: colorTag, dueInfo: dueInfo, metaLine: metaLine, empty: empty,
     segmented: segmented, chips: chips, searchBox: searchBox, photoButton: photoButton,
+    viewMode: viewMode, viewToggle: viewToggle, filterRow: filterRow,
+    listBox: listBox, listRow: listRow, rowButton: rowButton,
     initials: initials, auth: auth
   };
 })(window);
