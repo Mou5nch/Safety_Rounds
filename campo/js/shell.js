@@ -451,7 +451,11 @@
       }
     }).catch(function (e) {
       console.error(e);
-      document.body.innerHTML = '<div style="max-width:480px;margin:18vh auto;padding:24px;font-family:sans-serif"><h1 style="font-size:20px">No se ha podido iniciar la aplicación</h1><p style="color:#4A5378;line-height:1.6">' + esc(e.message) + '</p></div>';
+      document.body.innerHTML = '<div style="max-width:480px;margin:18vh auto;padding:24px;font-family:sans-serif"><h1 style="font-size:20px">No se ha podido iniciar la aplicación</h1><p style="color:#4A5378;line-height:1.6">' + esc(e.message) + '</p>' +
+        '<button id="srRepair" style="margin-top:10px;height:50px;padding:0 22px;border:0;border-radius:12px;background:#F16B6B;color:#fff;font:600 16px sans-serif">Actualizar la aplicación</button>' +
+        '<p style="color:#7A83A3;font-size:13px;line-height:1.5">Borra los archivos guardados de versiones anteriores y recarga. Tus datos no se tocan.</p></div>';
+      var b = document.getElementById('srRepair');
+      if (b) b.addEventListener('click', function () { if (global.Sync && Sync.repair) Sync.repair(); else location.reload(); });
     });
   }
 

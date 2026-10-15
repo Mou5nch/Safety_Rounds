@@ -403,6 +403,51 @@
     });
   }
 
+  /* ---------- Reparación de caché antigua ---------- */
+
+  /**
+   * Tras una actualización, un navegador que todavía tenía instalado el service
+   * worker anterior puede servir archivos viejos desde su caché mezclados con
+   * los nuevos (p. ej. un store.js sin almacén de sincronización junto a este
+   * sync.js). Reparar es dar de baja los service workers, vaciar las cachés de
+   * archivos y recargar: los datos de trabajo (IndexedDB) no se tocan.
+   */
+  function repair() {
+    try { sessionStorage.setItem('sr:repaired', String(Date.now())); } catch (e) {}
+    var jobs = [];
+    try {
+      if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+        jobs.push(navigator.serviceWorker.getRegistrations().then(function (rs) {
+          return Promise.all(rs.map(function (r) { return r.unregister(); }));
+        }));
+      }
+      if (global.caches && caches.keys) {
+        jobs.push(caches.keys().then(function (ks) {
+          return Promise.all(ks.map(function (k) { return caches.delete(k); }));
+        }));
+      }
+    } catch (e) { /* sin acceso a las cachés: basta con recargar */ }
+    return Promise.all(jobs).catch(function () {}).then(function () { location.reload(); });
+  }
+
+  /** ¿Los archivos cargados son una mezcla de versiones? */
+  function filesAreStale() {
+    return !Store.meta || typeof Store.onChange !== 'function' || typeof Store.applyRemote !== 'function';
+  }
+
+  function staleStart() {
+    var last = 0;
+    try { last = parseInt(sessionStorage.getItem('sr:repaired') || '0', 10) || 0; } catch (e) {}
+    if (Date.now() - last > 2 * 60 * 1000) {
+      // Primera vez: se repara sola y se recarga. La promesa no se cumple a
+      // propósito: la página se va a recargar y no debe seguir arrancando.
+      repair();
+      return new Promise(function () {});
+    }
+    // Ya se intentó hace un momento y sigue igual: se avisa en lugar de dar vueltas
+    return Promise.reject(new Error('Este dispositivo tiene guardados archivos de una versión anterior de la aplicación.'));
+  }
+
   /* ---------- Arranque ---------- */
 
   /**
@@ -411,6 +456,7 @@
    * y seguirá con lo que tenga en local.
    */
   function start() {
+    if (filesAreStale()) return staleStart();
     st.enabled = enabledForUser();
     if (!st.enabled) { setStatus('off'); return Promise.resolve(false); }
     if (st.started) return Promise.resolve(true);
@@ -495,6 +541,7 @@
 
   global.Sync = {
     start: start,
+    repair: repair,
     now: now,
     resync: resync,
     resetForDemo: resetForDemo,

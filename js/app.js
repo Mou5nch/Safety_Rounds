@@ -202,7 +202,10 @@
       document.body.innerHTML = '<div style="max-width:520px;margin:80px auto;padding:24px;font-family:sans-serif">' +
         '<h1 style="font-size:20px">No se ha podido iniciar la aplicación</h1>' +
         '<p style="color:#4A5378;line-height:1.6">' + UI.esc(e.message) + '</p>' +
-        '<p style="color:#7A83A3;font-size:14px">Comprueba que el navegador permite el almacenamiento local. En modo incógnito algunas funciones están restringidas.</p></div>';
+        '<button id="srRepair" style="margin:6px 0 14px;height:48px;padding:0 22px;border:0;border-radius:12px;background:#F16B6B;color:#fff;font:600 15px sans-serif;cursor:pointer">Actualizar la aplicación</button>' +
+        '<p style="color:#7A83A3;font-size:14px;line-height:1.55">«Actualizar» borra los archivos guardados de versiones anteriores y recarga; tus datos no se tocan. Si sigue fallando, comprueba que el navegador permite el almacenamiento local (en modo incógnito algunas funciones están restringidas).</p></div>';
+      var rb = document.getElementById('srRepair');
+      if (rb) rb.addEventListener('click', function () { if (global.Sync && Sync.repair) Sync.repair(); else location.reload(); });
     });
   }
 
