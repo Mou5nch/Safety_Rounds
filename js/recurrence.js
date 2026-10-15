@@ -108,9 +108,41 @@
     return out;
   }
 
+  /**
+   * Todas las visitas previstas entre dos fechas (YYYY-MM-DD, ambas incluidas).
+   * `upcoming()` solo da la PRÓXIMA de cada cuestionario y centro; un
+   * calendario necesita además las siguientes (la semanal de dentro de tres
+   * semanas, etc.). Se proyectan encadenando la periodicidad a partir de la
+   * próxima fecha. La próxima, si está vencida, se queda en su fecha real; las
+   * proyecciones posteriores que ya caen en el pasado no se muestran: una ronda
+   * semanal sin hacer es UNA ronda vencida, no una por cada semana transcurrida.
+   */
+  function occurrences(fromStr, toStr) {
+    var out = [];
+    upcoming().forEach(function (it) {
+      var rec = (Store.get('forms', it.formId) || {}).recurrence;
+      if (!rec) return;
+      var date = it.date, guard = 0, first = true;
+      var todayStr = UI.fmtDateInput(new Date());
+      while (date <= toStr && guard++ < 400) {
+        if (date >= fromStr && (first || date >= todayStr)) {
+          out.push(Object.assign({}, it, {
+            date: date, daysUntil: UI.relativeDays(date),
+            overdue: UI.relativeDays(date) < 0, projected: !first
+          }));
+        }
+        date = nextDate(date, rec);
+        first = false;
+      }
+    });
+    out.sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
+    return out;
+  }
+
   /* ---------- Exposición ---------- */
 
   global.Recurrence = {
+    occurrences: occurrences,
     FREQUENCIES: FREQUENCIES,
     freqDef: freqDef,
     freqLabel: freqLabel,

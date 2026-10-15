@@ -8,16 +8,24 @@
   'use strict';
 
   var DB_NAME = 'safety-rounds';
-  var DB_VERSION = 2;
+  var DB_VERSION = 3;
   var STORES = ['settings', 'folders', 'forms', 'visits', 'deviations', 'actions', 'catalogs', 'lists', 'files'];
+  // Almacén interno de la sincronización (cola de cambios, versiones base,
+  // estado y copia previa). No forma parte de las copias de seguridad.
+  var META_STORE = '_sync';
   var LS_PREFIX = 'sr:';
+  // Fecha de los registros que crea la propia aplicación (listas de sistema):
+  // cualquier edición real, de cualquier dispositivo, es más reciente.
+  var EPOCH = '1970-01-01T00:00:00.000Z';
 
-  var APP_VERSION = '2.0';
+  var APP_VERSION = '2.2';
 
   var db = null;
   var mode = 'idb';          // 'idb' | 'ls' | 'mem'
   var cache = {};            // espejo en memoria: cache[store] = { id: record }
+  var metaCache = {};        // espejo del almacén _sync (menos la copia previa)
   var ready = null;
+  var changeListeners = [];  // se avisa de cada cambio LOCAL (lo consume Sync)
 
   /* ---------- Utilidades ---------- */
 
@@ -50,9 +58,16 @@
 
       req.onupgradeneeded = function (ev) {
         var d = ev.target.result;
-        STORES.forEach(function (s) {
+        STORES.concat([META_STORE]).forEach(function (s) {
           if (!d.objectStoreNames.contains(s)) d.createObjectStore(s, { keyPath: 'id' });
         });
+        // Una base que ya existía antes de la sincronización contiene datos
+        // que nacieron solo en este dispositivo (pruebas o demostración). Se
+        // deja constancia para que la primera sincronización los trate como
+        // lo que son (ver Sync.bootstrap) en lugar de mezclarlos con el servidor.
+        if (ev.oldVersion >= 1 && ev.oldVersion < 3) {
+          try { localStorage.setItem('sr:presync', '1'); } catch (e) {}
+        }
       };
       req.onsuccess = function () { clearTimeout(timer); resolve(req.result); };
       req.onerror = function () { clearTimeout(timer); reject(req.error || new Error('idb error')); };
@@ -154,7 +169,10 @@
             cache[s] = {};
             rows.forEach(function (r) { cache[s][r.id] = r; });
           });
-        }));
+        }).concat([idbAll(META_STORE).then(function (rows) {
+          metaCache = {};
+          rows.forEach(function (r) { if (r.id !== 'backup') metaCache[r.id] = r; });
+        })]));
       }).catch(function () {
         mode = lsAvailable() ? 'ls' : 'mem';
         STORES.forEach(function (s) {
@@ -184,21 +202,94 @@
     return (cache[store] || {})[id] || null;
   }
 
-  function put(store, rec) {
+  /**
+   * opts.local = true  → el cambio se guarda pero NO se sincroniza (borradores
+   *                      que se autoguardan cada pocos segundos: solo viajan
+   *                      cuando el usuario los guarda a propósito o los cierra).
+   */
+  function put(store, rec, opts) {
     if (!rec.id) rec.id = uid(store.slice(0, 3));
     if (!rec.createdAt) rec.createdAt = nowISO();
     rec.updatedAt = nowISO();
     cache[store][rec.id] = rec;
     persist(store, rec);
+    emit(store, rec.id, 'put', opts);
     return rec;
   }
 
   /** Escritura sin tocar updatedAt (usado en migraciones y restauraciones). */
-  function putRaw(store, rec) {
+  function putRaw(store, rec, opts) {
     cache[store][rec.id] = rec;
     persist(store, rec);
+    emit(store, rec.id, 'put', opts);
     return rec;
   }
+
+  function emit(store, id, op, opts) {
+    if (opts && (opts.local || opts.quiet)) return;
+    for (var i = 0; i < changeListeners.length; i++) {
+      try { changeListeners[i](store, id, op); } catch (e) { console.warn('[store] oyente de cambios', e); }
+    }
+  }
+
+  /** Suscripción a los cambios hechos en ESTE dispositivo. */
+  function onChange(fn) { changeListeners.push(fn); }
+
+  /**
+   * Aplica un documento llegado del servidor: se guarda igual que cualquier
+   * otro, pero sin avisar como cambio local (si no, rebotaría al servidor).
+   * rec = null elimina el documento.
+   */
+  function applyRemote(store, id, rec) {
+    if (!cache[store]) return;
+    if (rec === null) {
+      delete cache[store][id];
+      if (mode === 'idb') idbDel(store, id).catch(function () {});
+      return;
+    }
+    cache[store][id] = rec;
+    persist(store, rec);
+  }
+
+  /* ---------- Almacén interno de la sincronización ---------- */
+
+  var meta = {
+    all: function (prefix) {
+      return Object.keys(metaCache).filter(function (k) { return !prefix || k.indexOf(prefix) === 0; })
+        .map(function (k) { return metaCache[k]; });
+    },
+    get: function (id) { return metaCache[id] || null; },
+    put: function (rec) {
+      metaCache[rec.id] = rec;
+      if (mode === 'idb') idbPut(META_STORE, rec).catch(function () {});
+      return rec;
+    },
+    del: function (id) {
+      delete metaCache[id];
+      if (mode === 'idb') idbDel(META_STORE, id).catch(function () {});
+    },
+    /** Elimina todo lo que empiece por prefix (o todo, si no se indica). */
+    clear: function (prefix) {
+      Object.keys(metaCache).forEach(function (k) {
+        if (!prefix || k.indexOf(prefix) === 0) meta.del(k);
+      });
+    },
+    // La copia previa puede pesar varios MB: no vive en memoria.
+    putBackup: function (data) {
+      if (mode !== 'idb') return Promise.resolve();
+      return idbPut(META_STORE, { id: 'backup', savedAt: nowISO(), data: data }).catch(function () {});
+    },
+    getBackup: function () {
+      if (mode !== 'idb') return Promise.resolve(null);
+      return new Promise(function (resolve) {
+        try {
+          var req = db.transaction(META_STORE, 'readonly').objectStore(META_STORE).get('backup');
+          req.onsuccess = function () { resolve(req.result || null); };
+          req.onerror = function () { resolve(null); };
+        } catch (e) { resolve(null); }
+      });
+    }
+  };
 
   function persist(store, rec) {
     if (mode === 'mem') return;
@@ -212,18 +303,23 @@
     }
   }
 
-  function remove(store, id) {
+  function remove(store, id, opts) {
     delete cache[store][id];
-    if (mode === 'mem') return;
-    if (mode === 'idb') idbDel(store, id).catch(function () {});
-    else lsSave(store);
+    if (mode !== 'mem') {
+      if (mode === 'idb') idbDel(store, id).catch(function () {});
+      else lsSave(store);
+    }
+    emit(store, id, 'del', opts);
   }
 
-  function clearStore(store) {
+  function clearStore(store, opts) {
+    var ids = Object.keys(cache[store] || {});
     cache[store] = {};
-    if (mode === 'mem') return;
-    if (mode === 'idb') idbClear(store).catch(function () {});
-    else lsSave(store);
+    if (mode !== 'mem') {
+      if (mode === 'idb') idbClear(store).catch(function () {});
+      else lsSave(store);
+    }
+    ids.forEach(function (id) { emit(store, id, 'del', opts); });
   }
 
   function query(store, fn) {
@@ -248,15 +344,24 @@
     var s = get('settings', 'app');
     if (!s) {
       s = clone(DEFAULT_SETTINGS);
-      putRaw('settings', s);
+      putRaw('settings', s, { quiet: true });   // los valores por defecto no se suben
     }
     return s;
   }
 
+  // De los ajustes, solo estos viajan al servidor (son los que ven todos los
+  // usuarios y la WebApp de campo). El resto —inspector por defecto, marca de
+  // demostración cargada…— es de cada dispositivo.
+  var SHARED_SETTINGS = ['appName', 'company', 'department', 'logo', 'pdfFooter', 'autoEmail'];
+
   function saveSettings(patch) {
     var s = settings();
-    Object.keys(patch).forEach(function (k) { s[k] = patch[k]; });
-    return put('settings', s);
+    var shared = false;
+    Object.keys(patch).forEach(function (k) {
+      if (SHARED_SETTINGS.indexOf(k) !== -1 && JSON.stringify(s[k]) !== JSON.stringify(patch[k])) shared = true;
+      s[k] = patch[k];
+    });
+    return put('settings', s, { local: !shared });
   }
 
   /* ======================================================================
@@ -292,7 +397,7 @@
 
   function addList(data) {
     return put('lists', {
-      id: uid('lst'),
+      id: data.id || uid('lst'),
       name: data.name,
       color: data.color || '#4356AE',
       icon: data.icon || 'list',
@@ -388,11 +493,18 @@
   function migrate() {
     var changed = false;
 
+    // Identificador fijo por tipo («lst_center»…): con datos compartidos,
+    // todos los dispositivos deben hablar de la MISMA lista de centros. Con
+    // identificadores al azar, cada móvil crearía la suya y las visitas de
+    // uno no encontrarían los centros del otro. La fecha es la época: si un
+    // administrador ya renombró la lista en otro dispositivo, esa edición gana.
     SYSTEM_LISTS.forEach(function (def, i) {
       if (listBySystem(def.system)) return;
-      addList({
+      putRaw('lists', {
+        id: 'lst_' + def.system,
         name: def.name, color: def.color, icon: def.icon,
-        system: def.system, analysable: def.analysable, order: i
+        system: def.system, childListId: null, analysable: def.analysable, order: i,
+        createdAt: EPOCH, updatedAt: EPOCH
       });
       changed = true;
     });
@@ -402,7 +514,7 @@
     var area = listBySystem('area');
     if (center && area && !center.childListId) {
       center.childListId = area.id;
-      put('lists', center);
+      putRaw('lists', center);
       changed = true;
     }
 
@@ -482,7 +594,9 @@
       throw new Error('El archivo no es una copia de seguridad de Safety Rounds.');
     }
     STORES.forEach(function (s) {
-      if (replace) clearStore(s);
+      // Los ajustes (nombre, logotipo…) se sustituyen sin borrarlos antes: de
+      // lo contrario la baja se propagaría a todos los dispositivos.
+      if (replace) clearStore(s, s === 'settings' ? { quiet: true } : undefined);
       (data[s] || []).forEach(function (r) { if (r && r.id) putRaw(s, r); });
     });
     // Una copia de la versión 1 no trae listas: se reconstruyen a partir de
@@ -540,12 +654,17 @@
     putRaw: putRaw,
     remove: remove,
     clearStore: clearStore,
+    onChange: onChange,
+    applyRemote: applyRemote,
+    meta: meta,
+    EPOCH: EPOCH,
     query: query,
     uid: uid,
     nowISO: nowISO,
     clone: clone,
     settings: settings,
     saveSettings: saveSettings,
+    SHARED_SETTINGS: SHARED_SETTINGS,
     lists: lists,
     list: list,
     listBySystem: listBySystem,

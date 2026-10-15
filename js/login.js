@@ -110,7 +110,7 @@
 
   function target() {
     var next = new URLSearchParams(location.search).get('next');
-    return (next && next.charAt(0) === '/') ? next : 'index.html';
+    return (next && next.charAt(0) === '/' && next.charAt(1) !== '/' && next.charAt(1) !== '\\') ? next : 'index.html';
   }
 
   function cacheAuth(user) {
@@ -174,7 +174,12 @@
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ username: userEl.value.trim(), password: passEl.value })
+      body: JSON.stringify({
+        username: userEl.value.trim(), password: passEl.value,
+        // Quien entra desde la WebApp de campo obtiene una sesión que no caduca
+        // a los 30 minutos: en planta el móvil pasa horas bloqueado o sin red.
+        client: target().indexOf('/campo') === 0 ? 'campo' : undefined
+      })
     }).then(function (res) {
       return res.json().catch(function () { return {}; }).then(function (data) { return { ok: res.ok, data: data }; });
     }).then(function (r) {

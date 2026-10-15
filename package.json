@@ -1,17 +1,19 @@
 {
   "name": "safety-rounds",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "private": true,
-  "description": "Safety Rounds — servidor Node para enlaces compartidos y seguimiento de acceso",
+  "description": "Safety Rounds — servidor Node: sincronización con la WebApp de campo, correo de informes, enlaces compartidos y seguimiento de acceso",
   "main": "server/index.js",
   "scripts": {
-    "start": "node server/index.js"
+    "start": "node server/index.js",
+    "test:api": "node tests/sync-api.test.mjs"
   },
   "engines": {
     "node": ">=18"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
+    "compression": "^1.8.2",
     "cookie-parser": "^1.4.6",
     "express": "^4.19.2",
     "nodemailer": "^9.0.5",

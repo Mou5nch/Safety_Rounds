@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Safety Rounds · Campo</title>
+<meta name="description" content="Herramienta de trabajo en campo conectada con Safety Rounds: calendario, cuestionarios, desviaciones y plan de acción.">
+<meta name="theme-color" content="#1E2B6F">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Campo">
+<meta name="robots" content="noindex, nofollow">
+
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="../icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../icons/icon-192.png">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="../css/app.css">
+<link rel="stylesheet" href="css/campo.css">
+</head>
+<body class="f-body">
+
+<script>
+// Guardia de sesión: sin usuario en caché no hay nada que mostrar todavía.
+// La sesión real se confirma con el servidor desde js/shell.js cuando hay red.
+(function () {
+  try {
+    if (!localStorage.getItem('sr:auth')) location.replace('../login.html?next=/campo/');
+  } catch (e) { /* almacenamiento bloqueado: se deja pasar, store.js ya avisa */ }
+})();
+</script>
+
+<div class="f-app" id="fApp">
+
+  <!-- Navegación lateral (tablet en horizontal y pantallas grandes) -->
+  <aside class="f-rail" id="fRail" aria-label="Navegación principal">
+    <div class="f-mark" aria-hidden="true">
+      <svg width="24" height="24" viewBox="0 0 100 100" fill="none"><path d="M50 10 L86 25 V52 C86 71 71 85 50 92 C29 85 14 71 14 52 V25 Z" stroke="#fff" stroke-width="7"/><path d="M34 51 L45 62 L67 38" stroke="#F16B6B" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+  </aside>
+
+  <!-- Barra superior: planta, sincronización y cuenta -->
+  <header class="f-top" id="fTop">
+    <button class="f-top__back" id="fBack" type="button" aria-label="Volver"></button>
+    <div class="f-mark f-mark--top" aria-hidden="true">
+      <svg width="22" height="22" viewBox="0 0 100 100" fill="none"><path d="M50 10 L86 25 V52 C86 71 71 85 50 92 C29 85 14 71 14 52 V25 Z" stroke="#fff" stroke-width="7"/><path d="M34 51 L45 62 L67 38" stroke="#F16B6B" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+
+    <button class="f-plant" id="fPlant" type="button" aria-label="Elegir planta o centro de trabajo">
+      <span class="f-plant__icon" id="fPlantIcon"></span>
+      <span class="f-plant__text"><small>Planta</small><strong id="fPlantName">Todas las plantas</strong></span>
+      <span class="f-plant__chev" id="fPlantChev"></span>
+    </button>
+
+    <div class="f-top__run">
+      <div class="f-top__title" id="fTitle"></div>
+      <div class="f-top__sub" id="fSub"></div>
+    </div>
+    <div class="f-top__actions" id="fActions"></div>
+
+    <button class="f-sync" id="fSync" type="button" data-status="idle" aria-label="Estado de sincronización">
+      <span class="f-sync__icon"></span>
+      <span class="f-sync__n" id="fSyncCount" hidden>0</span>
+    </button>
+    <button class="f-avatar" id="fAvatar" type="button" aria-label="Mi cuenta">·</button>
+  </header>
+
+  <main class="f-main">
+    <div class="f-offline" id="fOffline" hidden role="status">
+      <span id="fOfflineIcon"></span><span id="fOfflineText"></span>
+    </div>
+    <div class="view" id="view"></div>
+  </main>
+
+  <!-- Navegación inferior (móvil y tablet en vertical) -->
+  <nav class="f-tabs" id="fTabs" aria-label="Navegación principal"></nav>
+</div>
+
+<div id="sheetRoot"></div>
+<div class="toasts" id="toasts"></div>
+<div id="modalRoot"></div>
+
+<script src="../vendor/jspdf.umd.min.js"></script>
+<script src="../js/icons.js"></script>
+<script src="../js/store.js"></script>
+<script src="../js/sync.js"></script>
+<script src="../js/ui.js"></script>
+<script src="../js/recurrence.js"></script>
+<script src="../js/builder.js"></script>
+<script src="../js/runner.js"></script>
+<script src="../js/pdf.js"></script>
+<script src="../js/mailer.js"></script>
+<script src="../js/share.js"></script>
+<script src="js/core.js"></script>
+<script src="js/records.js"></script>
+<script src="js/home.js"></script>
+<script src="js/calendar.js"></script>
+<script src="js/forms.js"></script>
+<script src="js/deviations.js"></script>
+<script src="js/actions.js"></script>
+<script src="js/shell.js"></script>
+</body>
+</html>

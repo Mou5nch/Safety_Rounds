@@ -634,24 +634,13 @@
    *  · en móvil se usa la hoja de compartir nativa (adjunta el PDF de verdad);
    *  · en escritorio se descarga el PDF y se abre el correo ya redactado.
    */
-  function sendByEmail(visitId) {
-    var visit = Store.get('visits', visitId);
-    if (!visit) return;
-    var form = visit.formSnapshot || Store.get('forms', visit.formId) || {};
-    // Destinatarios fijos del cuestionario + los que aportan los módulos de
-    // tipología con envío automático (el correo del responsable elegido)
-    var emails = (form.emails || []).slice();
-    (visit.extraEmails || []).forEach(function (m) {
-      if (emails.indexOf(m) === -1) emails.push(m);
-    });
-
-    askRecipients(emails, function (list) {
-      if (!list.length) return;
-      var blob = blobFor(visitId);
-      var name = filenameFor(visit);
-      var subject = '[' + (Store.settings().appName || 'Safety Rounds') + '] ' + (visit.formName || 'Inspección') + ' · ' + visit.code;
-      var s = visit.score || { ok: 0, ko: 0, pct: 0 };
-      var body = [
+  /** Asunto, cuerpo y nombre de archivo del correo de un informe. */
+  function emailContent(visit) {
+    var s = visit.score || { ok: 0, ko: 0, pct: 0 };
+    return {
+      filename: filenameFor(visit),
+      subject: '[' + (Store.settings().appName || 'Safety Rounds') + '] ' + (visit.formName || 'Inspección') + ' · ' + visit.code,
+      body: [
         'Adjunto el informe de la inspección realizada.',
         '',
         'Referencia: ' + visit.code,
@@ -665,7 +654,41 @@
         '',
         '--',
         (Store.settings().company || Store.settings().department || 'Departamento de Safety & Health')
-      ].join('\n');
+      ].join('\n')
+    };
+  }
+
+  /** Destinatarios habituales de una visita: los del cuestionario + los de sus módulos de tipología. */
+  function defaultRecipients(visit) {
+    var form = visit.formSnapshot || Store.get('forms', visit.formId) || {};
+    var emails = (form.emails || []).slice();
+    (visit.extraEmails || []).forEach(function (m) {
+      if (emails.indexOf(m) === -1) emails.push(m);
+    });
+    return emails;
+  }
+
+  /**
+   * Envío del informe por correo.
+   *  · Con sesión sincronizada, el servidor lo envía con el PDF adjunto
+   *    (js/mailer.js): funciona igual en móvil y escritorio y, si no hay
+   *    cobertura, queda en cola y sale solo al recuperarla.
+   *  · Sin servidor de correo (o en cuentas de demostración) se mantiene el
+   *    comportamiento anterior: hoja de compartir nativa en móvil, o PDF
+   *    descargado y correo redactado en escritorio.
+   */
+  function sendByEmail(visitId) {
+    var visit = Store.get('visits', visitId);
+    if (!visit) return;
+    var emails = defaultRecipients(visit);
+
+    askRecipients(emails, function (list) {
+      if (!list.length) return;
+      if (global.Mailer && Mailer.useServer()) { Mailer.queue(visitId, list); return; }
+
+      var blob = blobFor(visitId);
+      var c = emailContent(visit);
+      var name = c.filename, subject = c.subject, body = c.body;
 
       // 1) Hoja de compartir nativa con el PDF adjunto (móvil / macOS)
       if (blob && navigator.canShare) {
@@ -703,13 +726,13 @@
 
     UI.modal({
       title: 'Enviar informe por correo',
-      subtitle: 'Se adjuntará el PDF de la visita.',
+      subtitle: (global.Mailer && Mailer.useServer()) ? 'Se enviará desde el servidor con el PDF de la visita adjunto.' : 'Se adjuntará el PDF de la visita.',
       icon: 'mail',
       body: body,
       buttons: [
         { label: 'Cancelar', kind: 'quiet' },
         {
-          label: 'Preparar envío', kind: 'primary', icon: 'send',
+          label: (global.Mailer && Mailer.useServer()) ? 'Enviar informe' : 'Preparar envío', kind: 'primary', icon: 'send',
           onClick: function () {
             var list = input.value.split(/[,;\n]/).map(function (s) { return s.trim(); })
               .filter(function (s) { return s.indexOf('@') > 0; });
@@ -726,6 +749,9 @@
     open: open,
     blobFor: blobFor,
     sendByEmail: sendByEmail,
+    askRecipients: askRecipients,
+    emailContent: emailContent,
+    defaultRecipients: defaultRecipients,
     filenameFor: filenameFor,
     available: available
   };

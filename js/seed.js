@@ -125,8 +125,22 @@
     var s = Store.settings();
     if (s.seeded) return false;
 
+    // Con datos compartidos el cuestionario de ejemplo se crea una sola vez
+    // para todos, y solo cuando ya se sabe qué hay en el servidor: si no, cada
+    // dispositivo que arrancase vacío crearía el suyo y se duplicaría.
+    if (global.Sync && Sync.enabled()) {
+      if (!Sync.ready()) return false;
+      if (Store.all('forms').length || Store.all('folders').length) {
+        Store.saveSettings({ seeded: true });
+        return false;
+      }
+      var role = null;
+      try { role = (JSON.parse(localStorage.getItem('sr:auth') || 'null') || {}).role; } catch (e) {}
+      if (role === 'inspector') return false;   // los inspectores no crean cuestionarios
+    }
+
     var folder = Store.put('folders', {
-      id: Store.uid('fol'),
+      id: 'fol_inspecciones',
       name: 'Inspecciones periódicas',
       color: '#1E2B6F',
       order: 0
@@ -135,13 +149,16 @@
     // Una tipología propia vacía, para que se vea desde el primer momento
     // cómo se usa el módulo de selección. Los elementos los pone el usuario.
     var resp = Store.addList({
+      id: 'lst_responsables',
       name: 'Responsables de departamento',
       color: '#178A6B',
       icon: 'users',
       analysable: true
     });
 
-    Store.put('forms', demoForm(folder.id, resp.id));
+    var demo = demoForm(folder.id, resp.id);
+    demo.id = 'form_demo';
+    Store.put('forms', demo);
     Store.saveSettings({ seeded: true });
     return true;
   }

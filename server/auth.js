@@ -37,11 +37,17 @@ function cookieOptions() {
   };
 }
 
-async function createSession(userId, req, res) {
+// La WebApp de campo (/campo) abre sesiones con una ventana de inactividad
+// más larga: en planta el móvil pasa horas bloqueado o sin cobertura entre
+// una ronda y otra, y pedir la contraseña cada 30 minutos sería inviable.
+const FIELD_IDLE_MINUTES = 24 * 60;
+
+async function createSession(userId, req, res, opts) {
   const token = newToken();
+  const idle = opts && opts.idleMinutes ? opts.idleMinutes : null;
   await pool.query(
-    `INSERT INTO sessions (id, user_id, ip, user_agent) VALUES ($1, $2, $3, $4)`,
-    [token, userId, req.ip || null, req.get('user-agent') || null]
+    `INSERT INTO sessions (id, user_id, ip, user_agent, idle_minutes) VALUES ($1, $2, $3, $4, $5)`,
+    [token, userId, req.ip || null, req.get('user-agent') || null, idle]
   );
   res.cookie(COOKIE_NAME, token, cookieOptions());
   return token;
@@ -64,7 +70,7 @@ async function touchSession(token) {
   const { rows } = await pool.query(
     `UPDATE sessions SET last_seen_at = now()
       WHERE id = $1 AND logout_at IS NULL
-        AND last_seen_at > now() - ($2 * interval '1 minute')
+        AND last_seen_at > now() - (COALESCE(idle_minutes, $2) * interval '1 minute')
       RETURNING user_id`,
     [token, IDLE_TIMEOUT_MINUTES]
   );
@@ -72,7 +78,7 @@ async function touchSession(token) {
   await pool.query(
     `UPDATE sessions SET logout_at = last_seen_at
       WHERE id = $1 AND logout_at IS NULL
-        AND last_seen_at <= now() - ($2 * interval '1 minute')`,
+        AND last_seen_at <= now() - (COALESCE(idle_minutes, $2) * interval '1 minute')`,
     [token, IDLE_TIMEOUT_MINUTES]
   );
   return null;
@@ -89,7 +95,7 @@ async function attachUser(req, res, next) {
       `SELECT u.id, u.username, u.name, u.role
          FROM sessions s JOIN users u ON u.id = s.user_id
         WHERE s.id = $1 AND s.logout_at IS NULL
-          AND s.last_seen_at > now() - ($2 * interval '1 minute')`,
+          AND s.last_seen_at > now() - (COALESCE(s.idle_minutes, $2) * interval '1 minute')`,
       [token, IDLE_TIMEOUT_MINUTES]
     );
     req.user = rows[0] || null;
@@ -112,6 +118,7 @@ function requireAdmin(req, res, next) {
 
 module.exports = {
   COOKIE_NAME,
+  FIELD_IDLE_MINUTES,
   hashPassword,
   verifyPassword,
   createSession,

@@ -3,13 +3,16 @@
    Sirve la aplicación estática (igual que antes) y añade la API necesaria
    para los enlaces compartidos y el seguimiento de acceso de usuarios.
    La aplicación sigue guardando los datos de trabajo en el dispositivo
-   (IndexedDB): este servidor solo entra en juego para compartir informes y
-   para el inicio de sesión.
+   (IndexedDB), lo que permite usarla sin cobertura. El servidor es el punto
+   de encuentro entre la APP principal y la WebApp de campo (/campo): sincroniza
+   visitas, desviaciones y plan de acción (/api/sync), envía los informes por
+   correo (/api/email), comparte enlaces y gestiona el inicio de sesión.
    ========================================================================== */
 'use strict';
 
 const path = require('path');
 const express = require('express');
+const compression = require('compression');
 const cookieParser = require('cookie-parser');
 const { pool, initSchema } = require('./db');
 const { seedUsers } = require('./seed');
@@ -19,6 +22,8 @@ const authRoutes = require('./routes/auth');
 const adminRoutes = require('./routes/admin');
 const shareRoutes = require('./routes/share');
 const trackRoutes = require('./routes/track');
+const syncRoutes = require('./routes/sync');
+const emailRoutes = require('./routes/email');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = process.env.PORT || 3000;
@@ -26,6 +31,9 @@ const PORT = process.env.PORT || 3000;
 const app = express();
 app.set('trust proxy', 1); // Railway va detrás de un proxy: así req.ip es el real
 
+// Comprime JS, CSS, HTML y JSON: en una conexión móvil de planta la primera
+// carga baja de unos 700 kB a menos de 250 kB.
+app.use(compression());
 app.use(express.json({ limit: '20mb' })); // las visitas con fotos pueden pesar varios MB
 app.use(cookieParser());
 app.use(attachUser);
@@ -34,6 +42,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/share', shareRoutes);
 app.use('/api/track', trackRoutes);
+app.use('/api/sync', syncRoutes);
+app.use('/api/email', emailRoutes);
 
 // Diagnóstico rápido de la conexión a Postgres: abre esta URL en el
 // navegador para saber, sin mirar logs, si la base de datos responde.

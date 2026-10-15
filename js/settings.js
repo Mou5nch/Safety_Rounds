@@ -27,8 +27,10 @@
     if (detailId && !Store.list(detailId)) detailId = null;
     if (detailId) { renderDetail(view); return; }
 
-    App.setHeader('Ajustes y datos', 'Identidad, tipologías y copias de seguridad', [
-      el('button', {
+    var limited = cachedRole() === 'inspector';   // los inspectores no administran la configuración
+
+    App.setHeader('Ajustes y datos', limited ? 'Sincronización y copia de seguridad' : 'Identidad, tipologías y copias de seguridad', [
+      limited ? null : el('button', {
         class: 'btn btn--ghost btn--sm', html: ico('plus', 16) + '<span>Nueva tipología</span>',
         onclick: function () { editList(null); }
       }),
@@ -38,9 +40,15 @@
       })
     ]);
 
-    view.appendChild(brandCard());
-    view.appendChild(listsSection());
-    view.appendChild(el('div', { style: { height: '15px' } }));
+    if (global.Sync && Sync.enabled()) {
+      view.appendChild(syncCard());
+      view.appendChild(el('div', { style: { height: '15px' } }));
+    }
+    if (!limited) {
+      view.appendChild(brandCard());
+      view.appendChild(listsSection());
+      view.appendChild(el('div', { style: { height: '15px' } }));
+    }
     view.appendChild(dataCard());
   }
 
@@ -617,7 +625,9 @@
 
   function dataCard() {
     var card = el('div', { class: 'card' });
-    card.appendChild(head('Datos y copias de seguridad', 'Toda la información se guarda en este dispositivo', 'database'));
+    var shared = !!(global.Sync && Sync.enabled());
+    card.appendChild(head('Datos y copias de seguridad',
+      shared ? 'Copia local sincronizada con el servidor' : 'Toda la información se guarda en este dispositivo', 'database'));
     var body = el('div', { class: 'card__body' });
 
     var counts = [
@@ -644,8 +654,10 @@
 
     body.appendChild(el('div', {
       class: 'hint', style: { marginBottom: '16px', lineHeight: '1.6' },
-      html: 'Los datos viven ' + where +
-        '. <strong>Descarga una copia de seguridad periódicamente</strong> y guárdala en una carpeta de red o en la nube: es también la forma de pasar los datos a otro equipo.'
+      html: shared
+        ? 'Los datos se guardan en este dispositivo (así funciona sin conexión) y <strong>se sincronizan con el servidor</strong>, que es el punto de encuentro con la WebApp de campo y con el resto de dispositivos. Aun así, conviene <strong>descargar una copia de seguridad</strong> de vez en cuando.'
+        : 'Los datos viven ' + where +
+          '. <strong>Descarga una copia de seguridad periódicamente</strong> y guárdala en una carpeta de red o en la nube: es también la forma de pasar los datos a otro equipo.'
     }));
 
     var actions = el('div', { style: { display: 'flex', gap: '9px', flexWrap: 'wrap' } });
@@ -665,11 +677,18 @@
       onclick: function () { importInput.click(); }
     }));
     actions.appendChild(importInput);
-    actions.appendChild(el('button', {
-      class: 'btn btn--ghost', html: ico('lightbulb', 16) + '<span>Cargar datos de ejemplo</span>',
-      onclick: loadDemo
-    }));
+    if (cachedRole() === 'inspector') {
+      // El inspector solo descarga copia: restaurar o cargar ejemplos afectaría a todos
+      actions.removeChild(actions.childNodes[1]);
+      actions.removeChild(importInput);
+    } else {
+      actions.appendChild(el('button', {
+        class: 'btn btn--ghost', html: ico('lightbulb', 16) + '<span>Cargar datos de ejemplo</span>',
+        onclick: loadDemo
+      }));
+    }
     body.appendChild(actions);
+    if (cachedRole() === 'inspector') { card.appendChild(body); return card; }
 
     // Zona peligrosa
     var dangerButtons = [
@@ -706,10 +725,72 @@
     return card;
   }
 
+  /* ---------- Sincronización ---------- */
+
+  function syncCard() {
+    var card = el('div', { class: 'card' });
+    card.appendChild(head('Sincronización', 'Conexión con el servidor y con la WebApp de campo', 'refresh'));
+    var body = el('div', { class: 'card__body' });
+
+    var line = el('div', { style: { display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '14px' } });
+    var tag = el('span', { class: 'tag' });
+    var when = el('span', { class: 'hint', style: { margin: '0' } });
+    line.appendChild(tag); line.appendChild(when);
+    body.appendChild(line);
+
+    function paint(s) {
+      var map = {
+        synced: ['tag--ok', 'Sincronizado'], idle: ['tag--ok', 'Al día'], syncing: ['tag--navy', 'Sincronizando…'],
+        pending: ['tag--warn', 'Pendiente de subir (' + s.pending + ')'], offline: ['tag--warn', 'Sin conexión'],
+        auth: ['tag--danger', 'Sesión caducada'], error: ['tag--danger', 'Error'], off: ['', 'Desactivada']
+      };
+      var m = map[s.status] || ['', s.status];
+      tag.className = 'tag ' + m[0];
+      tag.textContent = m[1];
+      when.textContent = s.lastSync ? 'Última sincronización: ' + UI.fmtDateTime(s.lastSync) : 'Todavía no se ha sincronizado';
+      if (s.error) when.textContent += ' · ' + s.error;
+    }
+    paint(Sync.status());
+    Sync.on(function (s) { if (tag.isConnected) paint(s); });
+
+    body.appendChild(el('div', { class: 'hint', style: { marginBottom: '16px', lineHeight: '1.6' },
+      html: 'Las visitas, desviaciones y acciones que se crean o editan aquí aparecen en la WebApp de campo, y al revés. Sin conexión la aplicación sigue funcionando y sube los cambios sola al recuperarla.' }));
+
+    var actions = el('div', { style: { display: 'flex', gap: '9px', flexWrap: 'wrap' } });
+    actions.appendChild(el('button', {
+      class: 'btn btn--navy', html: ico('refresh', 16) + '<span>Sincronizar ahora</span>',
+      onclick: function () { Sync.now(); }
+    }));
+    actions.appendChild(el('button', {
+      class: 'btn btn--ghost', html: ico('download', 16) + '<span>Volver a descargar todo</span>',
+      onclick: function () {
+        UI.confirm({
+          title: 'Volver a descargar todo',
+          text: 'Se vuelven a pedir al servidor todos los datos. Lo que tengas pendiente de subir se conserva. Úsalo si ves diferencias con otro dispositivo.',
+          confirmLabel: 'Descargar', confirmIcon: 'download', danger: false, icon: 'download'
+        }).then(function (ok) { if (ok) Sync.resync().then(function () { render(); }); });
+      }
+    }));
+    actions.appendChild(el('button', {
+      class: 'btn btn--ghost', html: ico('database', 16) + '<span>Datos anteriores a la sincronización</span>',
+      onclick: function () {
+        Sync.getBackup().then(function (b) {
+          if (!b) { UI.toast('No hay una copia anterior guardada en este dispositivo.', 'info'); return; }
+          UI.downloadText('safety-rounds-previo-sincronizacion-' + UI.fmtDateInput(b.savedAt) + '.json', JSON.stringify(b.data), 'application/json');
+          UI.toast('Copia anterior descargada.');
+        });
+      }
+    }));
+    body.appendChild(actions);
+    card.appendChild(body);
+    return card;
+  }
+
   function loadDemo() {
     UI.confirm({
       title: 'Cargar datos de ejemplo',
-      text: 'Se generarán tipologías, centros, áreas y unos seis meses de inspecciones ficticias para que puedas ver el dashboard y el plan de acción funcionando. No se borra nada de lo que ya tengas: podrás eliminarlo después desde «Borrar visitas y desviaciones».',
+      text: 'Se generarán tipologías, centros, áreas y unos seis meses de inspecciones ficticias para que puedas ver el dashboard y el plan de acción funcionando. No se borra nada de lo que ya tengas: podrás eliminarlo después desde «Borrar visitas y desviaciones».' +
+        (global.Sync && Sync.enabled() ? ' Atención: estos datos se sincronizarán y los verán todos los usuarios y la WebApp de campo.' : ''),
       confirmLabel: 'Generar ejemplo',
       confirmIcon: 'lightbulb',
       danger: false,
@@ -749,7 +830,8 @@
         subtitle: 'Contenido del archivo: ' + summary,
         icon: 'upload',
         body: el('div', { class: 'hint', style: { paddingBottom: '8px', lineHeight: '1.6' } },
-          'Elige cómo aplicar la copia. «Reemplazar» borra los datos actuales y deja exactamente el contenido del archivo. «Fusionar» conserva lo que ya tienes y añade o actualiza los registros de la copia.'),
+          'Elige cómo aplicar la copia. «Reemplazar» borra los datos actuales y deja exactamente el contenido del archivo. «Fusionar» conserva lo que ya tienes y añade o actualiza los registros de la copia.' +
+          (global.Sync && Sync.enabled() ? ' Los cambios se sincronizarán con el servidor y con el resto de dispositivos.' : '')),
         footSplit: true,
         buttons: [
           {
@@ -813,7 +895,9 @@
   function wipe(stores, what, extra) {
     UI.confirm({
       title: 'Borrar ' + what,
-      text: extra + ' Esta acción no se puede deshacer. ¿Seguro que quieres continuar?',
+      text: extra + ' Esta acción no se puede deshacer.' +
+        (global.Sync && Sync.enabled() ? ' Se borrará también en el servidor y en todos los dispositivos conectados.' : '') +
+        ' ¿Seguro que quieres continuar?',
       confirmLabel: 'Sí, borrar'
     }).then(function (ok) {
       if (!ok) return;

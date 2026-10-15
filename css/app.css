@@ -1155,3 +1155,24 @@ tr:hover .row-actions { opacity: 1; }
   .report-title-row { flex-direction: column; }
   .report-score { align-self: flex-start; }
 }
+
+
+/* ==========================================================================
+   Sincronización (chip del menú lateral)
+   ========================================================================== */
+.sync-chip {
+  display: flex; align-items: center; gap: 9px;
+  width: 100%; margin-bottom: 10px; padding: 10px 13px;
+  border-radius: var(--r); background: rgba(255, 255, 255, .07);
+  color: rgba(255, 255, 255, .78); font-size: 12.5px; font-weight: 600; text-align: left;
+  transition: background .15s var(--ease);
+}
+.sync-chip:hover { background: rgba(255, 255, 255, .12); color: #fff; }
+.sync-chip[hidden] { display: none; }
+.sync-chip__dot { width: 9px; height: 9px; border-radius: 50%; background: #6FD3B0; flex: none; }
+.sync-chip[data-status="syncing"] .sync-chip__dot { background: #9FB0F5; animation: sync-pulse 1s ease-in-out infinite; }
+.sync-chip[data-status="pending"] .sync-chip__dot,
+.sync-chip[data-status="offline"] .sync-chip__dot { background: #F2B661; }
+.sync-chip[data-status="auth"] .sync-chip__dot,
+.sync-chip[data-status="error"] .sync-chip__dot { background: var(--coral); }
+@keyframes sync-pulse { 50% { opacity: .35; transform: scale(.8); } }
