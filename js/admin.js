@@ -112,7 +112,7 @@
     } else {
       var table = el('table', { class: 'table' });
       table.appendChild(el('thead', {}, el('tr', {}, [
-        el('th', { text: 'Usuario' }), el('th', { text: 'Rol' }), el('th', { text: 'Estado' }),
+        el('th', { text: 'Usuario' }), el('th', { text: 'Rol' }), el('th', { text: 'Acceso' }), el('th', { text: 'Estado' }),
         el('th', { text: 'Sesiones' }), el('th', { text: 'Última conexión' }), el('th', { text: 'Tiempo conectado' }), el('th', {})
       ])));
       var tbody = el('tbody');
@@ -123,6 +123,7 @@
             el('div', { class: 'hint', style: { margin: 0 }, text: '@' + u.username + (u.email ? ' · ' + u.email : ' · sin correo (recuperación solo por el admin)') })
           ]),
           el('td', {}, el('span', { class: 'tag ' + (u.role === 'usuario' ? 'tag--warn' : 'tag--navy'), text: roleLabel(u.role) })),
+          el('td', {}, accessChips(u)),
           el('td', {}, el('span', {
             class: 'tag ' + (activeByUser[u.username] ? 'tag--ok' : ''), text: activeByUser[u.username] ? 'Conectado' : 'Sin conexión'
           })),
@@ -150,6 +151,60 @@
     }
     card.appendChild(body);
     return card;
+  }
+
+  /* ---------- Acceso a Safety Desk y a Safety Go ---------- */
+
+  var ACCESS_TIP = {
+    desk: 'Safety Desk: gestión y análisis (ordenador)',
+    go: 'Safety Go: trabajo en planta (móvil y tablet)'
+  };
+
+  /**
+   * Dos interruptores por usuario. Quien tiene los dos ve, al iniciar sesión,
+   * la pantalla «¿Cómo quieres entrar?»; quien solo tiene uno entra directo.
+   */
+  function accessChips(u) {
+    var box = el('div', { class: 'access-chips' });
+
+    function paint() {
+      UI.clear(box);
+      [['desk', 'Desk', 'monitor'], ['go', 'Go', 'smartphone']].forEach(function (d) {
+        var key = d[0];
+        var on = !!u.access[key];
+        var locked = key === 'desk' && u.role === 'admin';
+        var b = el('button', {
+          class: 'access-chip' + (on ? ' is-on' : ''), type: 'button',
+          'aria-pressed': on ? 'true' : 'false',
+          title: locked ? 'La administración siempre mantiene Safety Desk: es desde donde se gestionan los accesos.'
+            : (on ? 'Quitar acceso a ' : 'Dar acceso a ') + ACCESS_TIP[key],
+          html: ico(d[2], 14) + '<span>' + d[1] + '</span>' + (on ? '<span class="access-chip__dot"></span>' : '')
+        });
+        if (locked) b.disabled = true;
+        b.addEventListener('click', function () {
+          var next = { desk: u.access.desk, go: u.access.go };
+          next[key] = !on;
+          if (!next.desk && !next.go) {
+            UI.toast('Cada usuario necesita acceso al menos a Safety Desk o a Safety Go.', 'err');
+            return;
+          }
+          b.disabled = true;
+          fetch('/api/admin/users/' + u.id + '/access', {
+            method: 'PATCH', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+            body: JSON.stringify(next)
+          }).then(function (res) { return res.json().then(function (d) { return { ok: res.ok, data: d }; }); })
+            .then(function (r) {
+              if (!r.ok) { UI.toast((r.data && r.data.error) || 'No se ha podido cambiar el acceso.', 'err'); paint(); return; }
+              u.access = r.data.access;
+              paint();
+              UI.toast(u.name + ': ' + (u.access.desk && u.access.go ? 'Safety Desk y Safety Go.' : u.access.go ? 'solo Safety Go.' : 'solo Safety Desk.'));
+            }).catch(function () { UI.toast('No se ha podido conectar con el servidor.', 'err'); paint(); });
+        });
+        box.appendChild(b);
+      });
+    }
+    paint();
+    return box;
   }
 
   function roleLabel(role) {
@@ -286,11 +341,35 @@
       el('option', { value: 'usuario', text: 'Usuario (demo)' })
     ]);
 
+    // Acceso a las dos versiones: por defecto, las dos (las cuentas de demostración, solo Desk)
+    var access = { desk: true, go: true };
+    var accessBox = el('div', { class: 'access-switches' });
+    function paintAccess() {
+      UI.clear(accessBox);
+      [['desk', 'Safety Desk', 'Gestión y análisis'], ['go', 'Safety Go', 'Trabajo en planta']].forEach(function (d) {
+        var locked = d[0] === 'desk' && roleEl.value === 'admin';
+        var input = el('input', { type: 'checkbox' });
+        input.checked = locked ? true : access[d[0]];
+        input.disabled = locked;
+        input.addEventListener('change', function () { access[d[0]] = input.checked; });
+        accessBox.appendChild(el('label', { class: 'switch access-switch' }, [
+          input, el('span', { class: 'switch__track' }),
+          el('span', { class: 'switch__text' }, [el('strong', { text: d[1] }), el('small', { text: ' · ' + d[2] })])
+        ]));
+      });
+    }
+    roleEl.addEventListener('change', function () {
+      access = { desk: true, go: roleEl.value !== 'usuario' };
+      paintAccess();
+    });
+    paintAccess();
+
     var body = el('div', {}, [
       UI.field('Usuario', userEl, 'Para iniciar sesión sirve tanto este usuario como el correo de abajo.'),
       UI.field('Nombre', nameEl),
       UI.field('Correo (opcional)', emailEl, 'Si lo indicas, esta cuenta también podrá usar «¿Has olvidado tu contraseña?» en el login.'),
       UI.field('Rol', roleEl),
+      UI.field('Acceso', accessBox, 'Con las dos, al entrar verá la pantalla «¿Cómo quieres entrar?». Con una sola, entra directamente en ella.'),
       UI.field('Contraseña', passEl, 'Compártela con quien vaya a usar esta cuenta de prueba.')
     ]);
 
@@ -305,10 +384,15 @@
           onClick: function () {
             var payload = {
               username: userEl.value.trim(), name: nameEl.value.trim(), email: emailEl.value.trim(),
-              role: roleEl.value, password: passEl.value
+              role: roleEl.value, password: passEl.value,
+              access: { desk: roleEl.value === 'admin' ? true : access.desk, go: access.go }
             };
             if (!payload.username || !payload.name || !payload.password) {
               UI.toast('Rellena usuario, nombre y contraseña.', 'err');
+              return false;
+            }
+            if (!payload.access.desk && !payload.access.go) {
+              UI.toast('Cada usuario necesita acceso al menos a Safety Desk o a Safety Go.', 'err');
               return false;
             }
             fetch('/api/admin/users', {

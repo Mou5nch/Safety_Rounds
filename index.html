@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#1E2B6F">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Safety Rounds">
+<meta name="apple-mobile-web-app-title" content="Safety Desk">
 
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/favicon.svg" type="image/svg+xml">
@@ -27,7 +27,11 @@
 // Se comprueba con el servidor (y se manda el latido de conexión) desde js/auth.js.
 (function () {
   try {
-    if (!localStorage.getItem('sr:auth')) location.replace('login.html');
+    var raw = localStorage.getItem('sr:auth');
+    if (!raw) { location.replace('login.html'); return; }
+    // Una cuenta sin acceso a Safety Desk (solo campo) va a Safety Go
+    var access = (JSON.parse(raw) || {}).access;
+    if (access && access.desk === false) location.replace('/campo/');
   } catch (e) { /* almacenamiento bloqueado: se deja pasar, store.js ya avisa */ }
 })();
 </script>
@@ -97,6 +101,11 @@
     </nav>
 
     <div class="sidebar__foot">
+      <a class="sidebar-switch" id="switchGo" href="entrar.html?from=desk" hidden>
+        <span class="sidebar-switch__icon" id="switchGoIcon" aria-hidden="true"></span>
+        <span class="sidebar-switch__text"><strong>Cambiar a Safety Go</strong><small>Versión de campo</small></span>
+        <span class="sidebar-switch__chev" id="switchGoChev" aria-hidden="true"></span>
+      </a>
       <div class="session-user" id="sessionUser" hidden>
         <span class="session-user__name" id="sessionUserName"></span>
         <button class="btn btn--quiet btn--sm btn--icon" id="sessionLogout" title="Cerrar sesión">

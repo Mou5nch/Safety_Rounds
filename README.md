@@ -4,7 +4,9 @@ Aplicación web para la gestión de cuestionarios, inspecciones y desviaciones d
 departamento de **Safety & Health**. Funciona sin conexión y se instala en el móvil
 como una app: las inspecciones se guardan en el dispositivo y, con una cuenta
 iniciada, **se sincronizan con el servidor** para compartirlas con el resto del
-equipo y con la **WebApp de campo** (`/campo/`, ver el punto 11).
+equipo y con la **WebApp de campo** (`/campo/`, ver el punto 11). La aplicación tiene dos
+versiones, **Safety Desk** (gestión y análisis, en ordenador) y **Safety Go** (campo), y quien
+las tiene las dos elige a cuál entrar (ver el punto 11.8).
 
 Desde la versión 2.1 hay además un pequeño servidor Node + PostgreSQL (pensado
 para Railway) que añade dos cosas que no se pueden hacer solo con el dispositivo:
@@ -678,6 +680,34 @@ agosto y todo saldría vencido), de modo que hay desviaciones y acciones vencida
 otras por vencer, y se activa la periodicidad en tres cuestionarios para que el
 calendario tenga rondas previstas.
 
+### 11.4 ter Safety Desk y Safety Go: elegir a qué parte entrar
+
+La aplicación tiene dos versiones con la misma cuenta y los mismos datos:
+
+| Versión | Para qué | Dirección |
+|---|---|---|
+| **Safety Desk** | Gestión y análisis: dashboard, configuración de cuestionarios, desviaciones, plan de acción. Pensada para el ordenador. | `/` |
+| **Safety Go** | Trabajo en planta: calendario de rondas, visitas con fotos y firma, sin conexión. Pensada para móvil y tablet. | `/campo/` |
+
+- **Quién tiene acceso a cuál**: se decide por usuario en el *Panel de accesos* (columna
+  *Acceso*, con un interruptor «Desk» y otro «Go» en cada fila, y al crear un usuario).
+  Sin cambios, todos los perfiles reales tienen las dos y las cuentas de demostración solo
+  Desk. La administración siempre conserva Desk (desde ahí se gestionan los accesos) y
+  nadie puede quedarse sin ninguna.
+- **Al iniciar sesión**: quien tiene las dos ve la pantalla **«¿Cómo quieres entrar?»**,
+  con *Safety Desk* como opción predeterminada (marcada y lista para pulsar Enter). Quien
+  solo tiene una entra directamente en ella, sin ver esa pantalla. Un enlace directo
+  (p. ej. `/campo/`) se respeta mientras la cuenta tenga acceso a esa parte.
+- **Cambio rápido**: «Cambiar a Safety Go» en el menú lateral de Desk y «Cambiar a Safety
+  Desk» en *Mi cuenta* de Go abren esa misma pantalla, sin volver a escribir la contraseña,
+  con la otra versión propuesta. Solo se ofrece a quien tiene las dos.
+- **Sesión**: la sesión adopta la ventana de inactividad de la versión que se está usando
+  (30 minutos en Desk, 24 horas en Go).
+- Los interruptores gobiernan **qué versión se ofrece y a cuál se puede entrar**, no la
+  seguridad de los datos: esa la marca el rol (p. ej. un inspector no puede escribir
+  cuestionarios, con o sin Desk).
+- Las aplicaciones instaladas en el móvil se llaman ahora *Safety Desk* y *Safety Go*.
+
 ### 11.5 Instalar y desplegar
 
 No hay nada nuevo que configurar salvo, si se quiere, el correo (11.4). Al
@@ -702,7 +732,9 @@ js/sync.js                  Motor de sincronización (compartido con la APP prin
 js/mailer.js                Cola de envío de informes por correo
 server/routes/sync.js       API de sincronización: /api/sync/push · pull · head
 server/routes/email.js      API de correo: /api/email/report · status
-tests/sync-api.test.mjs     Prueba de integración de la API (npm run test:api)
+tests/sync-api.test.mjs     Prueba de integración de la sincronización (npm run test:api)
+tests/access-api.test.mjs   Prueba de integración del acceso Desk/Go (npm run test:access)
+entrar.html · js/entrar.js · css/entrar.css   Pantalla «¿Cómo quieres entrar?»
 ```
 
 La WebApp de campo reutiliza el motor de visitas, la lógica condicional y el

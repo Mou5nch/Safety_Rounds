@@ -7,7 +7,7 @@ const crypto = require('crypto');
 const express = require('express');
 const { pool } = require('../db');
 const {
-  COOKIE_NAME, FIELD_IDLE_MINUTES, verifyPassword, hashPassword, createSession, endSession, touchSession
+  COOKIE_NAME, FIELD_IDLE_MINUTES, accessFrom, verifyPassword, hashPassword, createSession, endSession, touchSession
 } = require('../auth');
 const mail = require('../mail');
 
@@ -70,7 +70,7 @@ router.post('/login', async function (req, res) {
     clearAttempts('login', key);
     const isField = req.body && req.body.client === 'campo';
     await createSession(user.id, req, res, isField ? { idleMinutes: FIELD_IDLE_MINUTES } : null);
-    res.json({ username: user.username, name: user.name, role: user.role });
+    res.json({ username: user.username, name: user.name, role: user.role, access: accessFrom(user) });
   } catch (e) {
     console.error('[auth] error en login', e);
     res.status(500).json({ error: 'No se ha podido iniciar sesión. Inténtalo de nuevo.' });
@@ -114,7 +114,7 @@ router.post('/register', async function (req, res) {
     );
     clearAttempts('register', key);
     await createSession(rows[0].id, req, res);
-    res.status(201).json({ username: rows[0].username, name: rows[0].name, role: rows[0].role });
+    res.status(201).json({ username: rows[0].username, name: rows[0].name, role: rows[0].role, access: accessFrom(rows[0]) });
   } catch (e) {
     if (e.code === '23505') return res.status(409).json({ error: 'Ya existe una cuenta con ese correo.' });
     registerFailure('register', key);
@@ -138,6 +138,14 @@ router.post('/heartbeat', async function (req, res) {
   try {
     const row = await touchSession(req.sessionToken);
     if (!row) return res.status(401).json({ error: 'La sesión ha caducado.' });
+    // Una misma sesión puede pasar de Safety Desk a Safety Go sin volver a
+    // iniciar sesión: el latido indica desde cuál se está usando y la sesión
+    // adopta su ventana de inactividad (30 minutos en Desk, 24 horas en Go).
+    const client = req.body && req.body.client;
+    if (client === 'campo' || client === 'desk') {
+      await pool.query('UPDATE sessions SET idle_minutes = $2 WHERE id = $1',
+        [req.sessionToken, client === 'campo' ? FIELD_IDLE_MINUTES : null]);
+    }
     res.json({ ok: true });
   } catch (e) {
     console.error('[auth] error en heartbeat', e);

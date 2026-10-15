@@ -301,10 +301,11 @@
     }
 
     body.appendChild(el('div', { class: 'f-stack', style: { marginTop: '18px' } }, [
-      el('a', {
-        class: 'btn btn--ghost btn--block f-btn', href: '../index.html',
-        html: ico('external', 18) + '<span>Abrir la APP principal</span>'
-      }),
+      // «Cambiar a Safety Desk»: solo para quien tiene acceso a las dos versiones
+      (accessOf(me).desk && accessOf(me).go) ? el('a', {
+        class: 'btn btn--ghost btn--block f-btn', href: '../entrar.html?from=go',
+        html: ico('monitor', 18) + '<span>Cambiar a Safety Desk</span>'
+      }) : null,
       el('button', {
         class: 'btn btn--danger btn--block f-btn', html: ico('logout', 18) + '<span>Cerrar sesión</span>',
         onclick: logout
@@ -312,6 +313,11 @@
     ]));
 
     Campo.sheet({ title: 'Mi cuenta', body: body, onClose: offSync });
+  }
+
+  /** Versiones a las que tiene acceso la cuenta (sin dato guardado: las dos, salvo las de demostración). */
+  function accessOf(me) {
+    return (me && me.access) || { desk: true, go: !me || me.role !== 'usuario' };
   }
 
   function roleLabel(r) {
@@ -354,7 +360,7 @@
       }).then(function (r) { return r.json().catch(function () { return {}; }).then(function (b) { return { ok: r.ok, b: b }; }); })
         .then(function (r) {
           if (!r.ok) { err.textContent = r.b.error || 'No se ha podido iniciar sesión.'; return; }
-          try { localStorage.setItem('sr:auth', JSON.stringify({ username: r.b.username, name: r.b.name, role: r.b.role, cachedAt: Date.now() })); } catch (e) {}
+          try { localStorage.setItem('sr:auth', JSON.stringify({ username: r.b.username, name: r.b.name, role: r.b.role, access: r.b.access, cachedAt: Date.now() })); } catch (e) {}
           s.close();
           UI.toast('Sesión renovada. Sincronizando…', 'info');
           Sync.now();
@@ -434,6 +440,7 @@
 
   function boot() {
     var me = Campo.auth();
+    if (me.access && me.access.go === false) { location.replace('../index.html'); return; }
     if (me.role === 'usuario') {
       blocked('Cuenta de demostración', 'La WebApp de campo trabaja con los datos reales del departamento. Las cuentas de demostración usan la APP principal con sus propios datos de ejemplo.');
       return;
@@ -462,14 +469,24 @@
         fetch('/api/auth/me', { credentials: 'include' }).then(function (r) {
           if (r.status === 401) relogin();
           else if (r.ok) return r.json().then(function (u) {
-            try { localStorage.setItem('sr:auth', JSON.stringify({ username: u.username, name: u.name, role: u.role, cachedAt: Date.now() })); } catch (e) {}
+            try { localStorage.setItem('sr:auth', JSON.stringify({ username: u.username, name: u.name, role: u.role, access: u.access, cachedAt: Date.now() })); } catch (e) {}
+            // Si le quitan el acceso a Safety Go mientras tiene la pantalla abierta, se le lleva a Safety Desk
+            if (u.access && u.access.go === false) location.replace('../index.html');
           });
         }).catch(function () {});
       }
+      // El latido indica que esta sesión se usa desde Safety Go: adopta la ventana de 24 horas
+      function heartbeat() {
+        fetch('/api/auth/heartbeat', {
+          method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ client: 'campo' })
+        }).then(function (r) { if (r.status === 401) relogin(); }).catch(function () {});
+      }
       check();
+      if (navigator.onLine !== false) heartbeat();
       setInterval(function () {
         if (document.visibilityState === 'visible' && navigator.onLine !== false) {
-          fetch('/api/auth/heartbeat', { method: 'POST', credentials: 'include' }).then(function (r) { if (r.status === 401) relogin(); }).catch(function () {});
+          heartbeat();
         }
       }, 60 * 1000);
 
