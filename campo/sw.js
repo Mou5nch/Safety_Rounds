@@ -7,7 +7,7 @@
    apertura sin dejar a nadie atascado en la antigua.
    ========================================================================== */
 
-var CACHE = 'safety-rounds-campo-v2';
+var CACHE = 'safety-rounds-campo-v3';
 
 var ASSETS = [
   '/campo/',
@@ -28,6 +28,7 @@ var ASSETS = [
   '/js/sync.js',
   '/js/ui.js',
   '/js/recurrence.js',
+  '/js/seed.js',
   '/js/builder.js',
   '/js/runner.js',
   '/js/pdf.js',

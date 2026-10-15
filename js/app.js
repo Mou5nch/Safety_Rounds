@@ -166,7 +166,10 @@
       // Primera bajada del servidor ANTES de crear nada propio: así un
       // dispositivo nuevo recibe las listas y cuestionarios existentes en
       // lugar de generar los suyos. Sin red, o sin sincronización, no espera.
-      return Sync.start().then(function () { return demoLoaded; });
+      return Sync.start().then(function () {
+        // Con los datos compartidos en blanco, un administrador carga la demostración
+        return Seed.ensureSharedDemo().then(function (shared) { return demoLoaded || shared; });
+      });
     }).then(function (demoLoaded) {
       // Crea las listas de sistema y engancha los elementos de la versión 1
       Store.migrate();

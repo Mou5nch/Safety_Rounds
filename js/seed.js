@@ -361,6 +361,121 @@
     return created;
   }
 
+  /* ======================================================================
+     Demostración completa sobre los datos compartidos
+     ----------------------------------------------------------------------
+     La copia que ven las cuentas de demostración (demo-data.json: cuestionarios,
+     plantas, visitas, desviaciones con fotos y plan de acción) cargada en el
+     conjunto de datos que comparten la APP principal y la WebApp de campo, para
+     tener algo que gestionar. Dos retoques al cargarla:
+       · las fechas se reparten en las últimas semanas (la copia es de agosto y
+         todo saldría vencido), de modo que hay desviaciones y acciones vencidas
+         y otras por vencer;
+       · se activa la periodicidad en tres cuestionarios, para que el
+         calendario tenga rondas previstas.
+     ====================================================================== */
+
+  function pad2(n) { return n < 10 ? '0' + n : String(n); }
+
+  function dayAt(n) {                       // hoy menos n días, a mediodía (evita saltos de hora)
+    var d = new Date(); d.setHours(12, 0, 0, 0); d.setDate(d.getDate() - n); return d;
+  }
+  function parseDay(s) {
+    var p = String(s).slice(0, 10).split('-');
+    return new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10), 12);
+  }
+  function fmtDay(d) { return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
+  function shiftDay(s, delta) { if (!s) return s; var d = parseDay(s); d.setDate(d.getDate() + delta); return fmtDay(d); }
+  function shiftISO(s, delta) { return s ? new Date(new Date(s).getTime() + delta * 86400000).toISOString() : s; }
+
+  function redateDemo(data) {
+    var visits = (data.visits || []).slice().sort(function (a, b) { return a.code < b.code ? -1 : a.code > b.code ? 1 : 0; });
+    var delta = {};
+    visits.forEach(function (v, i) {
+      // La más reciente, hace 4 días; cada anterior, 6 días antes
+      var target = dayAt(4 + (visits.length - 1 - i) * 6);
+      delta[v.id] = Math.round((target - parseDay(v.date)) / 86400000);
+    });
+    (data.visits || []).forEach(function (v) {
+      var d = delta[v.id] || 0;
+      v.date = shiftDay(v.date, d);
+      if (v.completedAt) v.completedAt = shiftISO(v.completedAt, d);
+    });
+    (data.deviations || []).forEach(function (x) {
+      var d = delta[x.visitId] || 0;
+      x.date = shiftDay(x.date, d);
+      if (x.closedAt) x.closedAt = shiftISO(x.closedAt, d);
+    });
+    (data.actions || []).forEach(function (a) {
+      var d = delta[a.visitId] || 0;
+      if (a.dueDate) a.dueDate = shiftDay(a.dueDate, d);
+      if (a.closedAt) a.closedAt = shiftISO(a.closedAt, d);
+    });
+  }
+
+  function addDemoRecurrence(data) {
+    var centerList = (data.lists || []).filter(function (l) { return l.system === 'center'; })[0];
+    if (!centerList) return;
+    var byName = {};
+    (data.catalogs || []).forEach(function (c) { if (c.listId === centerList.id) byName[c.name] = c.id; });
+    function ids(names) { return names.map(function (n) { return byName[n]; }).filter(Boolean); }
+
+    (data.forms || []).forEach(function (f) {
+      if (f.recurrence) return;
+      var plan = null;
+      if (/^Ronda de seguridad/i.test(f.name)) plan = ['monthly', ['Barcelona', 'Tarragona']];
+      else if (/Carretillas/i.test(f.name)) plan = ['monthly', ['Algeciras', 'Valencia']];
+      else if (/^OPS/i.test(f.name) && !/copia/i.test(f.name)) plan = ['biweekly', ['Barcelona', 'Tarragona', 'Algeciras', 'Valencia']];
+      if (!plan) return;
+      var c = ids(plan[1]);
+      if (c.length) f.recurrence = { enabled: true, freq: plan[0], customDays: 30, centerIds: c };
+    });
+  }
+
+  /**
+   * Sustituye los datos compartidos por la demostración completa (los ajustes
+   * generales no se tocan) y lo anota en los ajustes compartidos para que no
+   * vuelva a cargarse sola. Devuelve una promesa.
+   */
+  function loadSharedDemo() {
+    return fetch('/demo-data.json', { cache: 'no-cache' }).then(function (res) {
+      if (!res.ok) throw new Error('No se ha podido descargar la copia de demostración.');
+      return res.json();
+    }).then(function (data) {
+      redateDemo(data);
+      addDemoRecurrence(data);
+      Store.importAll(data, true, { keepSettings: true });
+      Store.saveSettings({ seeded: true, demoLoadedAt: Store.nowISO() });
+      return true;
+    });
+  }
+
+  /** ¿Los datos compartidos están en blanco (a lo sumo, el cuestionario de bienvenida)? */
+  function sharedIsPristine() {
+    return !Store.all('visits').length && !Store.all('deviations').length && !Store.all('actions').length &&
+      Store.all('forms').every(function (f) { return f.id === 'form_demo'; });
+  }
+
+  /**
+   * La primera vez que un administrador o supervisor entra con los datos
+   * compartidos en blanco, se carga la demostración: así la WebApp de campo
+   * tiene qué gestionar desde el primer momento. No se repite si ya se cargó
+   * una vez o si hay datos propios (el botón de Ajustes sirve para forzarla).
+   */
+  function ensureSharedDemo() {
+    var role = null;
+    try { role = (JSON.parse(localStorage.getItem('sr:auth') || 'null') || {}).role; } catch (e) {}
+    if (['admin', 'supervisor'].indexOf(role) === -1) return Promise.resolve(false);
+    if (!global.Sync || !Sync.enabled() || !Sync.ready()) return Promise.resolve(false);
+    var st = Sync.status().status;
+    if (navigator.onLine === false || st === 'offline' || st === 'auth' || st === 'error') return Promise.resolve(false);
+    if (Store.settings().demoLoadedAt || !sharedIsPristine()) return Promise.resolve(false);
+    return loadSharedDemo().then(function () { return true; }).catch(function (e) {
+      console.warn('[seed] no se ha podido cargar la demostración compartida', e);
+      return false;
+    });
+  }
+
   // Generador pseudoaleatorio con semilla: los datos de ejemplo son
   // reproducibles, lo que hace que las capturas y pruebas sean consistentes.
   var _seed = 20260725;
@@ -369,5 +484,8 @@
     return _seed / 0x7fffffff;
   }
 
-  global.Seed = { ensure: ensure, loadDemoData: loadDemoData, demoForm: demoForm };
+  global.Seed = {
+    ensure: ensure, loadDemoData: loadDemoData, demoForm: demoForm,
+    loadSharedDemo: loadSharedDemo, ensureSharedDemo: ensureSharedDemo
+  };
 })(window);
