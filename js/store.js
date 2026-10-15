@@ -352,7 +352,7 @@
   // De los ajustes, solo estos viajan al servidor (son los que ven todos los
   // usuarios y la WebApp de campo). El resto —inspector por defecto, marca de
   // demostración cargada…— es de cada dispositivo.
-  var SHARED_SETTINGS = ['appName', 'company', 'department', 'logo', 'pdfFooter', 'autoEmail'];
+  var SHARED_SETTINGS = ['appName', 'company', 'department', 'logo', 'pdfFooter', 'autoEmail', 'demoLoadedAt'];
 
   function saveSettings(patch) {
     var s = settings();
@@ -589,11 +589,17 @@
     return data;
   }
 
-  function importAll(data, replace) {
+  /**
+   * opts.keepSettings: no toca los ajustes generales (nombre, logotipo…). Se usa
+   * al cargar la demostración sobre datos compartidos, para no pisar la
+   * identidad del departamento.
+   */
+  function importAll(data, replace, opts) {
     if (!data || data._app !== 'safety-rounds') {
       throw new Error('El archivo no es una copia de seguridad de Safety Rounds.');
     }
     STORES.forEach(function (s) {
+      if (s === 'settings' && opts && opts.keepSettings) return;
       // Los ajustes (nombre, logotipo…) se sustituyen sin borrarlos antes: de
       // lo contrario la baja se propagaría a todos los dispositivos.
       if (replace) clearStore(s, s === 'settings' ? { quiet: true } : undefined);

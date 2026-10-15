@@ -276,6 +276,30 @@
     body.appendChild(el('div', { class: 'f-section-title', text: 'Este dispositivo' }));
     body.appendChild(dev);
 
+    // Administración y supervisor pueden cargar la demostración (la de la APP principal)
+    if (me.role === 'admin' || me.role === 'supervisor') {
+      body.appendChild(el('div', { class: 'f-section-title', text: 'Datos de demostración' }));
+      body.appendChild(el('div', { class: 'f-card f-card--flat' }, [
+        el('div', { class: 'f-hint', style: { padding: '12px 0 4px' }, text: 'Carga los cuestionarios, plantas, visitas, desviaciones y acciones de ejemplo para probar la aplicación. Sustituye los datos compartidos.' }),
+        el('button', {
+          class: 'btn btn--ghost btn--block f-btn', style: { margin: '10px 0 12px' }, html: ico('download', 18) + '<span>Cargar la demostración</span>',
+          onclick: function () {
+            UI.confirm({
+              title: 'Cargar la demostración', text: 'Sustituye TODOS los datos compartidos (visitas, desviaciones, acciones, cuestionarios y plantas) por los de ejemplo, en todos los dispositivos. No se puede deshacer.',
+              confirmLabel: 'Sí, cargarla', cancelLabel: 'Cancelar', icon: 'download', confirmIcon: 'download'
+            }).then(function (ok) {
+              if (!ok) return;
+              Seed.loadSharedDemo().then(function () {
+                Sync.now();
+                UI.toast('Demostración cargada.');
+                Shell.render();
+              }).catch(function (e) { UI.toast(e.message || 'No se ha podido cargar la demostración.', 'err'); });
+            });
+          }
+        })
+      ]));
+    }
+
     body.appendChild(el('div', { class: 'f-stack', style: { marginTop: '18px' } }, [
       el('a', {
         class: 'btn btn--ghost btn--block f-btn', href: '../index.html',
@@ -417,6 +441,9 @@
 
     Store.init().then(function () {
       return Sync.start();
+    }).then(function () {
+      // Datos compartidos en blanco: un administrador carga la demostración
+      return Seed.ensureSharedDemo();
     }).then(function () {
       Store.migrate();
       buildChrome();

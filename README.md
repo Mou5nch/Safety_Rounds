@@ -649,6 +649,27 @@ Sin ningún proveedor configurado, el botón sigue funcionando con la hoja de
 compartir del móvil (o descarga del PDF + `mailto:` en escritorio), como antes.
 Límites: 10 destinatarios por envío, PDF de hasta 12 MB y 40 envíos por hora y usuario.
 
+### 11.4 bis Datos de demostración compartidos
+
+Para tener algo que gestionar desde el primer momento, la WebApp de campo y la APP
+principal pueden cargar **la misma demostración que ven las cuentas de demostración**
+(`demo-data.json`: 4 cuestionarios, 4 plantas, visitas con desviaciones y fotos, y
+plan de acción) en los datos compartidos:
+
+- **Automática**: la primera vez que un administrador o supervisor entra con los
+  datos compartidos en blanco (sin visitas, desviaciones ni acciones, y a lo sumo el
+  cuestionario de bienvenida), se carga sola. No se repite si ya se cargó una vez
+  (queda anotado en los ajustes compartidos) ni si ya hay datos propios.
+- **A mano**: *Ajustes y datos → Datos y copias de seguridad → Cargar la demostración
+  completa* (APP principal) o *Mi cuenta → Cargar la demostración* (campo).
+  **Sustituye todos los datos compartidos**; la identidad del departamento (nombre,
+  logotipo) no se toca.
+
+Al cargarla, las fechas se reparten en las últimas semanas (la copia original es de
+agosto y todo saldría vencido), de modo que hay desviaciones y acciones vencidas y
+otras por vencer, y se activa la periodicidad en tres cuestionarios para que el
+calendario tenga rondas previstas.
+
 ### 11.5 Instalar y desplegar
 
 No hay nada nuevo que configurar salvo, si se quiere, el correo (11.4). Al

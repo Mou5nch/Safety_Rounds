@@ -709,6 +709,12 @@
         class: 'btn btn--danger btn--sm', html: ico('download', 15) + '<span>Restaurar datos de demostración</span>',
         onclick: reloadDemoData
       }));
+    } else if (shared) {
+      // Administración y supervisor: la misma demostración, sobre los datos compartidos
+      dangerButtons.push(el('button', {
+        class: 'btn btn--danger btn--sm', html: ico('download', 15) + '<span>Cargar la demostración completa</span>',
+        onclick: loadSharedDemo
+      }));
     }
     var danger = el('div', {
       class: 'card danger-zone',
@@ -867,6 +873,24 @@
       var a = JSON.parse(localStorage.getItem('sr:auth') || 'null');
       return a && a.role;
     } catch (e) { return null; }
+  }
+
+  function loadSharedDemo() {
+    UI.confirm({
+      title: 'Cargar la demostración completa',
+      text: 'Sustituye TODOS los datos compartidos (cuestionarios, plantas, visitas, desviaciones y plan de acción) por la demostración: 4 cuestionarios, 4 plantas, visitas con desviaciones y acciones, con fechas de las últimas semanas. Se verá también en la WebApp de campo y en el resto de dispositivos. No se puede deshacer; descarga antes una copia de seguridad si lo necesitas.',
+      confirmLabel: 'Sí, cargar la demostración', confirmIcon: 'download'
+    }).then(function (ok) {
+      if (!ok) return;
+      Seed.loadSharedDemo().then(function () {
+        Sync.now();
+        App.applyBrand(); App.refreshBadges(); App.updateStorage();
+        render();
+        UI.toast('Demostración cargada. Llegará a la WebApp de campo al sincronizar.');
+      }).catch(function (e) {
+        UI.toast(e.message || 'No se ha podido cargar la demostración.', 'err');
+      });
+    });
   }
 
   function reloadDemoData() {
