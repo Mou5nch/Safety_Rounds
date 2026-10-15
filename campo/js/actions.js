@@ -118,6 +118,34 @@
     }).then(function (ok) { if (ok) apply(); });
   }
 
+  /** Fila de la vista en lista. */
+  function row(a) {
+    var overdue = isOverdue(a);
+    var done = a.status === 'done';
+    var due = Campo.dueInfo(a.dueDate, done);
+    var sd = statusDef(a.status);
+    var dev = Store.get('deviations', a.deviationId);
+    var plant = a.centerId ? Store.catalogName(a.centerId) : '';
+
+    return Campo.listRow({
+      color: done ? 'var(--ok)' : overdue ? 'var(--coral)' : '#E3A02F',
+      title: a.title || 'Acción correctora',
+      sub: (dev && dev.description) || null,
+      meta: [Campo.tag(due.label, due.kind, 'calendar'), Campo.tag(sd.label, sd.kind), a.responsible || 'Sin responsable', plant || null],
+      cells: [a.responsible || 'Sin responsable', plant || '—', Campo.tag(due.label, due.kind), Campo.tag(sd.label, sd.kind)],
+      end: [Campo.rowButton(done ? 'refresh' : 'check', done ? 'Reabrir acción' : 'Cerrar acción', function () { quickToggle(a); }, done ? '' : 'ok')],
+      cls: overdue ? 'is-overdue' : '',
+      onclick: function () { openDetail(a.id); }
+    });
+  }
+
+  function table(rows) {
+    var box = Campo.listBox('6px minmax(0,2.4fr) minmax(0,1.1fr) minmax(0,1fr) 176px 100px 56px',
+      ['', 'Acción correctora', 'Responsable', 'Planta', 'Plazo', 'Estado', '']);
+    rows.forEach(function (a) { box.appendChild(row(a)); });
+    return box;
+  }
+
   function card(a) {
     var overdue = isOverdue(a);
     var due = Campo.dueInfo(a.dueDate, a.status === 'done');
@@ -160,7 +188,7 @@
         { value: 'done', label: 'Cerradas' }
       ], st.seg, function (v) { st.seg = v; Shell.render(); })
     ]));
-    view.appendChild(Campo.searchBox(st.q, 'Acción, responsable, visita…', function (v) { st.q = v; Shell.render(); }));
+    view.appendChild(Campo.filterRow('actions', Campo.searchBox(st.q, 'Acción, responsable, visita…', function (v) { st.q = v; Shell.render(); })));
 
     var rows = st.seg === 'overdue' ? overdue : st.seg === 'done' ? closed : pending;
     var q = st.q.trim().toLowerCase();
@@ -183,6 +211,7 @@
       view.appendChild(Campo.empty(msg[0], msg[1], msg[2]));
       return;
     }
+    if (Campo.viewMode('actions') === 'list') { view.appendChild(table(rows)); return; }
     var grid = el('div', { class: 'f-list f-list--grid' });
     rows.forEach(function (a) { grid.appendChild(card(a)); });
     view.appendChild(grid);

@@ -7,7 +7,7 @@
    apertura sin dejar a nadie atascado en la antigua.
    ========================================================================== */
 
-var CACHE = 'safety-rounds-campo-v3';
+var CACHE = 'safety-rounds-campo-v4';
 
 var ASSETS = [
   '/campo/',

@@ -24,6 +24,52 @@
      Listado
      ====================================================================== */
 
+  // Cerrar una desviación se confirma: el botón es grande a propósito (se usa
+  // con guantes) y un toque fallido no debe dar por resuelto algo abierto.
+  // Reabrirla no necesita aviso.
+  function toggleClosed(d) {
+    var closed = d.status === 'closed';
+    var act = Records.actionOf(d);
+    function apply() {
+      Records.setDeviationClosed(d, !closed);
+      UI.toast(closed ? 'Desviación reabierta.' : 'Desviación cerrada.');
+      Shell.render();
+    }
+    if (closed) { apply(); return; }
+    UI.confirm({
+      title: '¿Cerrar la desviación?', text: 'Se marcará como resuelta' + (act ? ' junto con su acción correctora.' : '.'),
+      confirmLabel: 'Sí, cerrar', cancelLabel: 'Todavía no', danger: false, icon: 'checkCircle', confirmIcon: 'check'
+    }).then(function (ok) { if (ok) apply(); });
+  }
+
+  /** Fila de la vista en lista. */
+  function row(d) {
+    var closed = d.status === 'closed';
+    var act = Records.actionOf(d);
+    var due = act ? Campo.dueInfo(act.dueDate, act.status === 'done') : null;
+    var where = [d.centerId ? Store.catalogName(d.centerId) : '', d.areaId ? Store.catalogName(d.areaId) : ''].filter(Boolean).join(' · ');
+    var status = Campo.tag(closed ? 'Cerrada' : 'Abierta', closed ? 'ok' : 'danger', closed ? 'check' : 'alert');
+    var sev = Campo.colorTag(d.severityId);
+
+    return Campo.listRow({
+      color: closed ? 'var(--ok)' : sevColor(d),
+      cls: closed ? 'is-closed' : '',
+      title: d.question || 'Desviación',
+      sub: d.description || 'Sin descripción',
+      meta: [status, sev, where || null, UI.fmtDate(d.date)],
+      cells: [sev || '—', where || '—', UI.fmtDate(d.date), due ? Campo.tag(due.label, due.kind) : '—', status],
+      end: [Campo.rowButton(closed ? 'refresh' : 'check', closed ? 'Reabrir' : 'Cerrar', function () { toggleClosed(d); }, closed ? '' : 'ok')],
+      onclick: function () { openDetail(d.id); }
+    });
+  }
+
+  function table(rows) {
+    var box = Campo.listBox('6px minmax(0,2.4fr) 104px minmax(0,1fr) 92px 176px 92px 56px',
+      ['', 'Punto de inspección', 'Gravedad', 'Planta · Área', 'Fecha', 'Plazo de la acción', 'Estado', '']);
+    rows.forEach(function (d) { box.appendChild(row(d)); });
+    return box;
+  }
+
   function card(d) {
     var closed = d.status === 'closed';
     var act = Records.actionOf(d);
@@ -36,7 +82,8 @@
     if (cat) tags.push(cat);
     tags.push(Campo.tag(closed ? 'Cerrada' : 'Abierta', closed ? 'ok' : 'danger', closed ? 'check' : 'alert'));
 
-    var node = el('div', { class: 'f-dev' + (closed ? ' is-closed' : ''), style: { '--sev': color } });
+    var node = el('div', { class: 'f-dev' + (closed ? ' is-closed' : '') });
+    node.style.setProperty('--sev', color);   // UI.el no sabe asignar variables CSS
 
     node.appendChild(el('button', { class: 'f-dev__body', type: 'button', onclick: function () { openDetail(d.id); } }, [
       el('div', { class: 'f-item__tags' }, tags),
@@ -69,18 +116,7 @@
     foot.appendChild(el('button', {
       class: 'btn btn--ghost btn--sm f-btn-sm', type: 'button',
       html: ico(closed ? 'refresh' : 'check', 16) + '<span>' + (closed ? 'Reabrir' : 'Cerrar') + '</span>',
-      onclick: function () {
-        function apply() {
-          Records.setDeviationClosed(d, !closed);
-          UI.toast(closed ? 'Desviación reabierta.' : 'Desviación cerrada.');
-          Shell.render();
-        }
-        if (closed) { apply(); return; }
-        UI.confirm({
-          title: '¿Cerrar la desviación?', text: 'Se marcará como resuelta' + (act ? ' junto con su acción correctora.' : '.'),
-          confirmLabel: 'Sí, cerrar', cancelLabel: 'Todavía no', danger: false, icon: 'checkCircle', confirmIcon: 'check'
-        }).then(function (ok) { if (ok) apply(); });
-      }
+      onclick: function () { toggleClosed(d); }
     }));
     node.appendChild(foot);
     return node;
@@ -103,7 +139,7 @@
       ], st.seg, function (v) { st.seg = v; Shell.render(); })
     ]));
 
-    view.appendChild(Campo.searchBox(st.q, 'Descripción, punto de inspección, visita…', function (v) { st.q = v; Shell.render(); }));
+    view.appendChild(Campo.filterRow('deviations', Campo.searchBox(st.q, 'Descripción, punto de inspección, visita…', function (v) { st.q = v; Shell.render(); })));
 
     var sevs = Store.catalog('severity');
     if (sevs.length) {
@@ -144,6 +180,7 @@
       return;
     }
     view.appendChild(el('div', { class: 'f-count', text: UI.num(rows.length) + ' ' + UI.plural(rows.length, 'desviación', 'desviaciones') }));
+    if (Campo.viewMode('deviations') === 'list') { view.appendChild(table(rows)); return; }
     var grid = el('div', { class: 'f-list f-list--grid' });
     rows.forEach(function (d) { grid.appendChild(card(d)); });
     view.appendChild(grid);
