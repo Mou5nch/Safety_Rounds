@@ -98,6 +98,49 @@ async function initSchema() {
       occurred_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
     CREATE INDEX IF NOT EXISTS nav_events_user_id_idx ON nav_events(user_id);
+
+    -- Duración de inactividad propia de cada sesión: la WebApp de campo
+    -- necesita ventanas más largas que los 30 minutos del navegador de
+    -- escritorio (el móvil se bloquea en el bolsillo entre una ronda y otra).
+    ALTER TABLE sessions ADD COLUMN IF NOT EXISTS idle_minutes INTEGER;
+
+    -- Datos de trabajo compartidos entre la APP principal y la WebApp de
+    -- campo. Cada fila es un documento de uno de los almacenes que antes solo
+    -- vivían en IndexedDB (visits, deviations, actions, forms…).
+    --   seq        contador global creciente: los clientes piden "todo lo que
+    --              haya cambiado desde seq N" (ver server/routes/sync.js)
+    --   deleted    las bajas se guardan como lápida para que se propaguen
+    --   last_device / echo: permiten no devolver a un dispositivo lo que
+    --              acaba de subir él mismo, salvo que el servidor lo haya
+    --              fusionado con cambios de otro
+    CREATE SEQUENCE IF NOT EXISTS docs_seq;
+    CREATE TABLE IF NOT EXISTS docs (
+      store TEXT NOT NULL,
+      id TEXT NOT NULL,
+      data JSONB,
+      deleted BOOLEAN NOT NULL DEFAULT FALSE,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      seq BIGINT NOT NULL DEFAULT nextval('docs_seq'),
+      last_device TEXT,
+      echo BOOLEAN NOT NULL DEFAULT FALSE,
+      updated_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      PRIMARY KEY (store, id)
+    );
+    CREATE INDEX IF NOT EXISTS docs_seq_idx ON docs(seq);
+
+    -- Registro de informes enviados por correo desde el servidor.
+    CREATE TABLE IF NOT EXISTS email_log (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      visit_id TEXT,
+      recipients TEXT NOT NULL,
+      subject TEXT,
+      status TEXT NOT NULL,
+      provider TEXT,
+      error TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS email_log_user_idx ON email_log(user_id, created_at);
   `);
 }
 

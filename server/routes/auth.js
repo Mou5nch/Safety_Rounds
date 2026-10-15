@@ -7,7 +7,7 @@ const crypto = require('crypto');
 const express = require('express');
 const { pool } = require('../db');
 const {
-  COOKIE_NAME, verifyPassword, hashPassword, createSession, endSession, touchSession
+  COOKIE_NAME, FIELD_IDLE_MINUTES, verifyPassword, hashPassword, createSession, endSession, touchSession
 } = require('../auth');
 const mail = require('../mail');
 
@@ -68,7 +68,8 @@ router.post('/login', async function (req, res) {
       return res.status(401).json({ error: 'Usuario o contraseña incorrectos.' });
     }
     clearAttempts('login', key);
-    await createSession(user.id, req, res);
+    const isField = req.body && req.body.client === 'campo';
+    await createSession(user.id, req, res, isField ? { idleMinutes: FIELD_IDLE_MINUTES } : null);
     res.json({ username: user.username, name: user.name, role: user.role });
   } catch (e) {
     console.error('[auth] error en login', e);

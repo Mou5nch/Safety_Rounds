@@ -158,12 +158,22 @@
 
   function boot() {
     Store.init().then(function () {
+      // Una cuenta de demostración nunca comparte datos: si este dispositivo
+      // había sincronizado antes, se limpia el rastro antes de cargar la demo.
+      if (cachedRole() === 'usuario') Sync.resetForDemo();
       return loadDemoDataIfNeeded();
+    }).then(function (demoLoaded) {
+      // Primera bajada del servidor ANTES de crear nada propio: así un
+      // dispositivo nuevo recibe las listas y cuestionarios existentes en
+      // lugar de generar los suyos. Sin red, o sin sincronización, no espera.
+      return Sync.start().then(function () { return demoLoaded; });
     }).then(function (demoLoaded) {
       // Crea las listas de sistema y engancha los elementos de la versión 1
       Store.migrate();
       var created = Seed.ensure();
       applyBrand();
+      initSyncUI();
+      applyRoleLimits();
 
       UI.$$('.nav__item').forEach(function (b) {
         b.addEventListener('click', function () { go(b.getAttribute('data-route')); });
@@ -227,6 +237,51 @@
       var a = JSON.parse(localStorage.getItem('sr:auth') || 'null');
       return a && a.role;
     } catch (e) { return null; }
+  }
+
+  /* ---------- Sincronización: chip de estado y refresco al llegar datos ---------- */
+
+  var SYNC_TEXT = {
+    synced: 'Sincronizado', idle: 'Al día', syncing: 'Sincronizando…', pending: 'Pendiente de subir',
+    offline: 'Sin conexión', auth: 'Sesión caducada', error: 'Error de sincronización'
+  };
+
+  function initSyncUI() {
+    var chip = UI.$('#syncChip');
+    if (!chip || !Sync.enabled()) return;
+    chip.hidden = false;
+    chip.addEventListener('click', function () { Sync.now(); });
+
+    function paint(s) {
+      chip.setAttribute('data-status', s.status);
+      var txt = SYNC_TEXT[s.status] || s.status;
+      if (s.status === 'pending' && s.pending) txt += ' (' + s.pending + ')';
+      UI.$('#syncText').textContent = txt;
+    }
+    paint(Sync.status());
+    Sync.on(paint);
+
+    // Llegan datos de otro dispositivo: se refrescan contadores y, si la
+    // pantalla actual es un listado (no una visita en curso ni un diálogo
+    // abierto), se vuelve a pintar para que los cambios se vean sin recargar.
+    var timer = null;
+    Sync.onRemote(function () {
+      applyBrand();
+      refreshBadges();
+      clearTimeout(timer);
+      timer = setTimeout(function () {
+        var busy = UI.$('.runner') || UI.$('#modalRoot .overlay') || UI.$('#view input:focus, #view textarea:focus');
+        if (!busy && ROUTES[current] && current !== 'configuracion') ROUTES[current].run();
+      }, 400);
+    });
+  }
+
+  /* El inspector trabaja en campo: no configura cuestionarios. */
+  function applyRoleLimits() {
+    if (cachedRole() !== 'inspector') return;
+    var cfg = UI.$('[data-route="configuracion"]');
+    if (cfg) cfg.hidden = true;
+    delete ROUTES.configuracion;
   }
 
   /* ---------- PWA ---------- */

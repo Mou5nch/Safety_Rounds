@@ -1293,8 +1293,8 @@
         .filter(function (s) { return s.length > 3 && s.indexOf('@') > 0; });
     });
     sec.appendChild(UI.field('Correos destinatarios', emailsInput,
-      'Separa varias direcciones con comas. Al cerrar una visita se ofrecerá enviarles el PDF.'));
-    sec.appendChild(el('div', { class: 'field' }, mkSwitch('Proponer el envío al cerrar la visita',
+      'Separa varias direcciones con comas. Al cerrar una visita se ofrecerá enviarles el PDF, o se enviará solo si activas el interruptor.'));
+    sec.appendChild(el('div', { class: 'field' }, mkSwitch('Enviar el PDF automáticamente al cerrar la visita',
       !!state.form.autoSend, function (v) { state.form.autoSend = v; })));
     box.appendChild(sec);
 

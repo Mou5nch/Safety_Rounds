@@ -103,6 +103,10 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
         </button>
       </div>
+      <button class="sync-chip" id="syncChip" type="button" title="Sincronizar ahora" hidden>
+        <span class="sync-chip__dot" id="syncDot"></span>
+        <span class="sync-chip__text" id="syncText">Sincronización</span>
+      </button>
       <div class="storage">
         <div class="storage__row">
           <span>Almacenamiento</span>
@@ -111,7 +115,7 @@
         <div class="storage__bar"><div class="storage__fill" id="storageFill" style="width:0%"></div></div>
         <div class="storage__row" style="margin-top:8px;opacity:.6;font-size:11px">
           <span>Safety Rounds</span>
-          <span id="appVersion">v2.0</span>
+          <span id="appVersion">v2.2</span>
         </div>
       </div>
     </div>
@@ -140,12 +144,14 @@
 <script src="vendor/jspdf.umd.min.js"></script>
 <script src="js/icons.js"></script>
 <script src="js/store.js"></script>
+<script src="js/sync.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/seed.js"></script>
 <script src="js/recurrence.js"></script>
 <script src="js/builder.js"></script>
 <script src="js/runner.js"></script>
 <script src="js/pdf.js"></script>
+<script src="js/mailer.js"></script>
 <script src="js/dashboard.js"></script>
 <script src="js/lists.js"></script>
 <script src="js/calendar.js"></script>

@@ -17,7 +17,12 @@
      Arranque
      ====================================================================== */
 
-  function start(formId, visitId) {
+  /**
+   * prefill (opcional, solo para visitas nuevas): { centerId, areaId, date }.
+   * La WebApp de campo lo usa para abrir la visita ya situada en la planta
+   * elegida en el filtro o en la que toca según el calendario.
+   */
+  function start(formId, visitId, prefill) {
     FT = Builder.FIELD_TYPES;
     var form, visit;
 
@@ -38,10 +43,10 @@
         folderId: form.folderId,
         formSnapshot: Store.clone(form),
         code: nextCode(),
-        centerId: '',
-        areaId: '',
-        inspector: Store.settings().defaultInspector || '',
-        date: UI.fmtDateInput(new Date()),
+        centerId: (prefill && prefill.centerId) || '',
+        areaId: (prefill && prefill.areaId) || '',
+        inspector: defaultInspector(),
+        date: (prefill && prefill.date) || UI.fmtDateInput(new Date()),
         status: 'draft',
         answers: {},
         score: null
@@ -85,12 +90,43 @@
     });
   }
 
+  /** Nombre del inspector: el de la cuenta con sesión iniciada o, si no, el de los ajustes. */
+  function defaultInspector() {
+    var s = Store.settings().defaultInspector;
+    if (s) return s;
+    try {
+      var a = JSON.parse(localStorage.getItem('sr:auth') || 'null');
+      return (a && (a.name || a.username)) || '';
+    } catch (e) { return ''; }
+  }
+
+  /** Iniciales de la cuenta («Carlos Ruiz» → CR) para que dos dispositivos nunca generen el mismo código. */
+  function userTag() {
+    try {
+      var a = JSON.parse(localStorage.getItem('sr:auth') || 'null');
+      if (!a || ['admin', 'supervisor', 'inspector'].indexOf(a.role) === -1) return '';
+      var base = (a.name || a.username || '').replace(/@.*$/, '');
+      var parts = base.split(/[\s._-]+/).filter(Boolean);
+      var tag = (parts.length > 1 ? parts[0][0] + parts[1][0] : base.slice(0, 2)).toUpperCase().replace(/[^A-Z0-9]/g, '');
+      return tag || 'XX';
+    } catch (e) { return ''; }
+  }
+
   function nextCode() {
     var y = new Date().getFullYear();
-    var n = Store.all('visits').filter(function (v) {
-      return (v.code || '').indexOf('V' + y) === 0;
-    }).length + 1;
-    return 'V' + y + '-' + String(n).padStart(4, '0');
+    // Con datos compartidos cada cuenta numera sus propias visitas
+    // (V2026-CR-0007): dos personas trabajando a la vez, o sin cobertura, no
+    // pueden repetir referencia. Sin cuenta sincronizada se mantiene V2026-0007.
+    var tag = userTag();
+    var prefix = 'V' + y + '-' + (tag ? tag + '-' : '');
+    var max = 0;
+    Store.all('visits').forEach(function (v) {
+      var c = v.code || '';
+      if (c.indexOf(prefix) !== 0) return;
+      var rest = c.slice(prefix.length);
+      if (/^\d+$/.test(rest)) max = Math.max(max, parseInt(rest, 10));
+    });
+    return prefix + String(max + 1).padStart(4, '0');
   }
 
   /* ======================================================================
@@ -1204,7 +1240,10 @@
     state.visit.score = computeScore();
     applyDerived();
     if (!state.visit.status) state.visit.status = 'draft';
-    Store.put('visits', state.visit);
+    // El autoguardado (cada pocos segundos) se queda en este dispositivo; solo
+    // el guardado explícito o el cierre de la visita viajan al servidor. Si no,
+    // cada foto añadida a un borrador se subiría una y otra vez.
+    Store.put('visits', state.visit, { local: !notify });
     state.dirty = false;
     if (notify) UI.toast('Borrador guardado. Puedes continuar más tarde.');
     App.refreshBadges();
@@ -1265,33 +1304,50 @@
     syncDeviations(state.visit);
     App.refreshBadges();
 
+    // Envío automático del informe si el cuestionario lo tiene activado
+    var autoMail = null;
+    if (!wasCompleted && state.form.autoSend && global.Mailer && Mailer.useServer()) {
+      var to = PDF.defaultRecipients(state.visit);
+      if (to.length) { Mailer.queue(state.visit.id, to, { auto: true }); autoMail = to; }
+    }
+
     var s = state.visit.score;
     UI.modal({
       title: wasCompleted ? 'Cambios guardados' : 'Visita finalizada',
       subtitle: state.visit.code + ' · ' + state.form.name,
       icon: 'checkCircle', iconKind: s.ko ? 'danger' : 'navy',
-      body: resultBody(s),
+      body: resultBody(s, autoMail),
       buttons: [
         { label: 'Ver visitas', kind: 'quiet', onClick: function () { App.go('historico'); } },
         { label: 'Descargar PDF', kind: 'ghost', icon: 'filePdf', onClick: function () {
           PDF.generate(state.visit.id, { download: true }); return false;
         } },
-        (state.form.emails && state.form.emails.length)
-          ? { label: 'Enviar por correo', kind: 'primary', icon: 'send', onClick: function () {
+        // Ya enviado automáticamente: basta con terminar. Si no, se ofrece
+        // enviarlo (con los destinatarios habituales ya rellenados).
+        autoMail
+          ? { label: 'Terminar', kind: 'primary', onClick: function () { App.go('historico'); } }
+          : { label: 'Enviar por correo', kind: 'primary', icon: 'send', onClick: function () {
               PDF.sendByEmail(state.visit.id); App.go('historico');
             } }
-          : { label: 'Terminar', kind: 'primary', onClick: function () { App.go('historico'); } }
       ]
     });
   }
 
-  function resultBody(s) {
+  function resultBody(s, autoMail) {
     var box = el('div', { style: { paddingBottom: '8px' } });
     box.appendChild(el('div', { class: 'kpis', style: { marginBottom: '0', gridTemplateColumns: 'repeat(3,1fr)', gap: '10px' } }, [
       kpiMini('Conformes', UI.num(s.ok), 'var(--ok)'),
       kpiMini('Desviaciones', UI.num(s.ko), 'var(--coral-dark)'),
       kpiMini('% conforme', UI.pct(s.pct), s.pct >= 90 ? 'var(--ok)' : s.pct >= 70 ? 'var(--warn)' : 'var(--coral-dark)')
     ]));
+    if (autoMail) {
+      box.appendChild(el('div', {
+        class: 'hint', style: { marginTop: '14px', color: 'var(--navy)', display: 'flex', gap: '7px', alignItems: 'center' }
+      }, [
+        el('span', { style: { display: 'flex' }, html: ico('mail', 14) }),
+        el('span', { text: 'El informe se está enviando a ' + autoMail.join(', ') + '.' })
+      ]));
+    }
     if (s.ko) {
       box.appendChild(el('div', {
         class: 'hint', style: { marginTop: '14px' },

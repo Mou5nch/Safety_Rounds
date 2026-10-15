@@ -1,15 +1,19 @@
-# Safety Rounds · versión 2.1
+# Safety Rounds · versión 2.2
 
 Aplicación web para la gestión de cuestionarios, inspecciones y desviaciones de un
 departamento de **Safety & Health**. Funciona sin conexión y se instala en el móvil
-como una app: las inspecciones se guardan en el dispositivo, igual que siempre.
+como una app: las inspecciones se guardan en el dispositivo y, con una cuenta
+iniciada, **se sincronizan con el servidor** para compartirlas con el resto del
+equipo y con la **WebApp de campo** (`/campo/`, ver el punto 11).
 
 Desde la versión 2.1 hay además un pequeño servidor Node + PostgreSQL (pensado
 para Railway) que añade dos cosas que no se pueden hacer solo con el dispositivo:
 **enlaces para compartir el informe de una visita** y un **panel de accesos** con
 usuarios de prueba para ver quién entra y cuánto tiempo está conectado. Todo lo
 demás —cuestionarios, visitas, desviaciones, plan de acción— sigue funcionando
-exactamente igual y sigue viviendo en el dispositivo. Ver el punto 10.
+exactamente igual. Desde la versión 2.2 esos datos, además de vivir en el
+dispositivo, se sincronizan con el servidor: ver el punto 11. Ver el punto 10
+para el servidor en sí.
 
 ---
 
@@ -215,8 +219,10 @@ navegador del dispositivo, en **IndexedDB** (con reserva automática a
 `localStorage` si el navegador la bloquea). Eso es lo que permite trabajar sin
 cobertura, pero implica dos cosas importantes:
 
-1. **Los datos no se comparten entre dispositivos.** Cada móvil, tablet u ordenador
-   tiene su propia base.
+1. **Los datos viven primero en el dispositivo.** Con una cuenta de administración,
+   supervisor o inspector se sincronizan además con el servidor (punto 11), así que
+   se comparten con el resto de dispositivos y con la WebApp de campo. Las cuentas
+   de demostración no sincronizan: cada navegador conserva su copia.
 2. **Conviene descargar copias de seguridad.** En *Ajustes y datos → Descargar copia*
    se genera un `.json` con absolutamente todo. Ese mismo archivo se restaura en otro
    equipo con *Restaurar copia*, en modo **Reemplazar** o **Fusionar**.
@@ -233,11 +239,9 @@ Cada visita guarda además una copia de la plantilla tal y como estaba al realiz
 Ocupa algo más, pero garantiza que **una inspección antigua nunca se rompe ni cambia
 de sentido** aunque después edites o borres el cuestionario.
 
-> Cuando se usa el servidor de Railway (punto 10), lo único que sale del
-> dispositivo es lo que decides compartir: el informe puntual de una visita, al
-> pulsar «Compartir enlace». Ese informe se guarda en PostgreSQL para que el
-> enlace funcione desde cualquier sitio. El resto de datos de trabajo sigue
-> siendo solo del dispositivo, igual que siempre.
+> Con una cuenta sincronizada (punto 11), las visitas, desviaciones, acciones,
+> cuestionarios y tipologías se copian también en PostgreSQL. Los borradores en
+> curso no: solo viajan cuando pulsas «Guardar borrador» o finalizas la visita.
 
 ---
 
@@ -552,3 +556,138 @@ Para renovar el contenido de ejemplo (por ejemplo, para que las fechas de las
 visitas no queden muy desfasadas) basta con generar una copia de seguridad
 nueva desde **Ajustes y datos → Descargar copia** con una cuenta de prueba y
 sustituir el archivo `demo-data.json` del repositorio por esa exportación.
+
+---
+
+## 11. WebApp de campo y sincronización (versión 2.2)
+
+La **WebApp de campo** es la herramienta para el trabajo en planta: la misma
+información que la APP principal, pero pensada para usarla de pie, con una mano y
+sin cobertura. Se abre en **`/campo/`** (por ejemplo
+`https://tu-app.up.railway.app/campo/`) con **el mismo usuario y contraseña** que la
+APP principal, y se instala en el móvil o la tablet igual que ella
+(*Añadir a pantalla de inicio*).
+
+### 11.1 Qué incluye
+
+| Pantalla | Para qué sirve |
+|---|---|
+| **Inicio** | Qué toca hoy, cifras de desviaciones abiertas y acciones vencidas, visitas sin terminar. |
+| **Calendario** | Vista mensual y agenda con las rondas previstas (periodicidad de cada cuestionario, proyectada a todo el mes), las visitas realizadas y los vencimientos del plan de acción. |
+| **Cuestionarios** | Empezar una visita, retomar borradores y consultar las realizadas (PDF, compartir, enviar por correo). No incluye la configuración de cuestionarios: esa sigue siendo de la APP principal. |
+| **Desviaciones** | Listado filtrable y ficha completa: descripción, gravedad, categoría, fotos, estado y acción correctora. |
+| **Acciones** | Plan de acción: pendientes, vencidas y cerradas, con cierre en un toque (pide confirmación). |
+
+**Filtro de planta.** El botón de arriba («Planta») filtra calendario,
+cuestionarios, desviaciones y acciones por centro de trabajo. Cada opción muestra
+sus pendientes. Se recuerda en el dispositivo y, al empezar una visita, la deja ya
+situada en esa planta. Las plantas son los *Centros e instalaciones* de la APP
+principal.
+
+**Adaptación a móvil y tablet.** Navegación inferior en móvil y lateral en tablet
+horizontal; objetivos táctiles de 48 px o más; tipografía de 16 px en los campos
+(evita el zoom automático de iOS); ventanas que suben desde abajo; zonas seguras
+de muesca y barra de inicio; selector de fechas, cámara y listas nativos del
+sistema.
+
+### 11.2 Cómo se sincroniza
+
+Cada dispositivo trabaja contra su copia local —por eso funciona sin cobertura— y
+se pone al día con el servidor cuando hay red: al abrir, al recuperar la conexión,
+cada 30 segundos con la pantalla visible y 2,5 segundos después de cada cambio. El
+icono de la nube de la barra superior (y el recuadro del menú lateral en la APP
+principal) muestra el estado y cuántos cambios quedan por subir.
+
+- **Conflictos.** Se resuelven campo a campo. Si un técnico cierra una desviación
+  desde la tablet sin cobertura mientras el administrador cambia su gravedad desde
+  el ordenador, al sincronizar se conservan las dos cosas. Solo si ambos modifican
+  el mismo campo gana el último en subirlo.
+- **Borradores.** El autoguardado se queda en el dispositivo; el borrador viaja
+  solo si pulsas «Guardar borrador» (así puedes seguir en otro dispositivo) o al
+  finalizar la visita.
+- **Edición de desviaciones y acciones.** Lo que se cambia desde campo (descripción,
+  gravedad, fotos, acción) se escribe también en la visita de origen, para que
+  reabrir esa visita en la APP principal no lo revierta.
+- **Códigos de visita.** Con sincronización cada cuenta numera sus visitas con sus
+  iniciales (`V2026-CR-0007`), de modo que dos personas trabajando a la vez o sin
+  cobertura no repiten referencia.
+- **Sesión.** La sesión de campo caduca a las 24 horas sin actividad (la de la APP
+  principal, a los 30 minutos). Si caduca con cambios sin subir, se pide la
+  contraseña en la propia pantalla y **no se pierde nada**.
+- **Permisos.** Administración y supervisor pueden modificar todo. El inspector
+  realiza visitas y gestiona desviaciones y acciones, y puede dar de alta elementos
+  de una lista desde la visita, pero no configura cuestionarios ni ajustes (el
+  servidor lo impide). Las cuentas de demostración no sincronizan.
+
+### 11.3 Primera vez en un dispositivo que ya tenía datos
+
+Si el navegador ya tenía datos de la versión sin servidor (pruebas o demostración),
+la primera sincronización **guarda una copia previa en el propio dispositivo**, lo
+deja limpio y descarga lo que haya en el servidor. La copia se recupera desde
+*Ajustes y datos → Sincronización → Datos anteriores a la sincronización*. Un
+dispositivo nuevo, en cambio, sube lo poco que tenga.
+
+### 11.4 Envío de informes por correo desde el servidor
+
+Al finalizar una visita se ofrece **Enviar por correo** (con los destinatarios del
+cuestionario ya rellenados) o, si el cuestionario tiene activado *Enviar el PDF
+automáticamente al cerrar la visita*, se envía solo. El PDF se genera en el
+dispositivo y lo envía el servidor; sin cobertura queda en cola y sale al volver.
+Cada visita muestra si el envío está *Enviado*, *En cola* o *Fallido*, tanto en
+campo como en la APP principal.
+
+Hay dos proveedores y se elige solo según las variables definidas (Resend tiene
+prioridad):
+
+| Variable | Para qué sirve |
+|---|---|
+| `RESEND_API_KEY` | Clave de [Resend](https://resend.com). **Recomendado en Railway**, que bloquea el SMTP saliente en los planes Free/Hobby. |
+| `MAIL_FROM` | Remitente: `informes@tudominio.com` o `Safety Rounds <informes@tudominio.com>`. Con Resend el dominio debe estar verificado en su panel. |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` | Alternativa SMTP (ver 10.2). |
+
+Sin ningún proveedor configurado, el botón sigue funcionando con la hoja de
+compartir del móvil (o descarga del PDF + `mailto:` en escritorio), como antes.
+Límites: 10 destinatarios por envío, PDF de hasta 12 MB y 40 envíos por hora y usuario.
+
+### 11.5 Instalar y desplegar
+
+No hay nada nuevo que configurar salvo, si se quiere, el correo (11.4). Al
+desplegar, el servidor crea las tablas `docs` y `email_log`. `/campo/` se sirve
+desde el mismo servicio que la APP principal, así que comparte dominio, sesión y
+HTTPS.
+
+### 11.6 Archivos nuevos
+
+```
+campo/                      WebApp de campo
+├── index.html              Estructura, navegación y carga de scripts
+├── manifest.webmanifest    Instalación como app (ámbito /campo/)
+├── sw.js                   Service worker propio (funciona sin conexión)
+├── css/campo.css           Estilos adaptados a móvil y tablet
+└── js/
+    ├── core.js             Filtro de planta, hojas inferiores, visor de fotos
+    ├── records.js          Edición de desviaciones/acciones (escribe también en la visita)
+    ├── home.js · calendar.js · forms.js · deviations.js · actions.js
+    └── shell.js            Navegación, cabecera, cuenta y arranque
+js/sync.js                  Motor de sincronización (compartido con la APP principal)
+js/mailer.js                Cola de envío de informes por correo
+server/routes/sync.js       API de sincronización: /api/sync/push · pull · head
+server/routes/email.js      API de correo: /api/email/report · status
+tests/sync-api.test.mjs     Prueba de integración de la API (npm run test:api)
+```
+
+La WebApp de campo reutiliza el motor de visitas, la lógica condicional y el
+generador de PDF de la APP principal (`js/runner.js`, `js/builder.js`,
+`js/pdf.js`): una visita hecha en campo es idéntica a una hecha en el ordenador.
+
+### 11.7 Pruebas
+
+```bash
+# servidor contra una base de datos de PRUEBA (no la de producción)
+DATABASE_URL=postgres://localhost/safety_test PORT=3100 \
+ADMIN_PASSWORD=admin-local node server/index.js
+
+# en otra terminal
+BASE_URL=http://localhost:3100 ADMIN_PASSWORD=admin-local npm run test:api
+```
+
