@@ -411,12 +411,6 @@
       if (a.dueDate) a.dueDate = shiftDay(a.dueDate, d);
       if (a.closedAt) a.closedAt = shiftISO(a.closedAt, d);
     });
-    // Las acciones sin cerrar se reparten en el tiempo (una vencida, una de esta
-    // semana, otras más adelante): así el calendario enseña los tres colores desde el primer día.
-    var spread = [-1, 5, 16, 24];
-    (data.actions || []).filter(function (a) { return a.status !== 'done' && a.dueDate; })
-      .sort(function (a, b) { return a.dueDate < b.dueDate ? -1 : a.dueDate > b.dueDate ? 1 : 0; })
-      .forEach(function (a, i) { if (i < spread.length) a.dueDate = fmtDay(dayAt(-spread[i])); });
   }
 
   function addDemoRecurrence(data) {
