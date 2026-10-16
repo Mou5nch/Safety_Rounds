@@ -411,6 +411,12 @@
       if (a.dueDate) a.dueDate = shiftDay(a.dueDate, d);
       if (a.closedAt) a.closedAt = shiftISO(a.closedAt, d);
     });
+    // Las acciones sin cerrar se reparten en el tiempo (una vencida, una de esta
+    // semana, otras más adelante): así el calendario enseña los tres colores desde el primer día.
+    var spread = [-1, 5, 16, 24];
+    (data.actions || []).filter(function (a) { return a.status !== 'done' && a.dueDate; })
+      .sort(function (a, b) { return a.dueDate < b.dueDate ? -1 : a.dueDate > b.dueDate ? 1 : 0; })
+      .forEach(function (a, i) { if (i < spread.length) a.dueDate = fmtDay(dayAt(-spread[i])); });
   }
 
   function addDemoRecurrence(data) {
@@ -429,6 +435,19 @@
       if (!plan) return;
       var c = ids(plan[1]);
       if (c.length) f.recurrence = { enabled: true, freq: plan[0], customDays: 30, centerIds: c };
+    });
+
+    // Primera ronda de cada cuestionario y planta que todavía no tiene visitas hechas:
+    // repartidas en las próximas semanas (una ya con retraso), en vez de todas hoy.
+    var offsets = [-3, 2, 5, 9, 12, 16, 21, 26], n = 0;
+    (data.forms || []).forEach(function (f) {
+      if (!f.recurrence || !f.recurrence.enabled) return;
+      f.recurrence.startDates = f.recurrence.startDates || {};
+      f.recurrence.centerIds.forEach(function (cid) {
+        var done = (data.visits || []).some(function (v) { return v.formId === f.id && v.centerId === cid && v.status === 'completed'; });
+        if (done) return;
+        f.recurrence.startDates[cid] = fmtDay(dayAt(-offsets[n++ % offsets.length]));
+      });
     });
   }
 

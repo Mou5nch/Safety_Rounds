@@ -575,10 +575,45 @@ APP principal, y se instala en el móvil o la tablet igual que ella
 | Pantalla | Para qué sirve |
 |---|---|
 | **Inicio** | Qué toca hoy, cifras de desviaciones abiertas y acciones vencidas, visitas sin terminar. |
-| **Calendario** | Vista mensual y agenda con las rondas previstas (periodicidad de cada cuestionario, proyectada a todo el mes), las visitas realizadas y los vencimientos del plan de acción. |
+| **Calendario** | Lo que viene, de un vistazo y filtrable por planta: pestaña **Próximas** (cifras de vencido / esta semana / más adelante, la próxima ronda de cada planta y las próximas caducidades de las desviaciones) y pestaña **Mes** (cuadrícula con una marca por entrada). Ver 11.1 bis. |
 | **Cuestionarios** | Empezar una visita, retomar borradores y consultar las realizadas (PDF, compartir, enviar por correo). No incluye la configuración de cuestionarios: esa sigue siendo de la APP principal. |
 | **Desviaciones** | Listado filtrable y ficha completa: descripción, gravedad, categoría, fotos, estado y acción correctora. |
 | **Acciones** | Plan de acción: pendientes, vencidas y cerradas, con cierre en un toque (pide confirmación). |
+
+### 11.1 bis El calendario, de un vistazo
+
+El calendario (el de Safety Go y el de Safety Desk, que comparten los mismos datos y
+los mismos colores) junta tres cosas:
+
+| Entrada | De dónde sale | Marca |
+|---|---|---|
+| **Ronda** | La periodicidad de cada cuestionario en cada planta (*Configuración de cuestionarios*). | Contorno |
+| **Caducidad** | La fecha límite de cada acción del plan de acción que sigue sin cerrar, con la desviación a la que corrige. | Relleno |
+| **Hecha** | Visita completada. | Verde suave |
+
+El **color** es la urgencia, igual para todo: **coral** vencida · **ámbar** hoy y los
+7 días siguientes · **azul** más adelante. Las desviaciones abiertas que no tienen
+plan de acción (o cuya acción no tiene fecha) salen aparte, como *Sin fecha límite*.
+
+- **Planta como filtro.** Una fila de botones («Todas», Barcelona, Tarragona…) con
+  cuántas cosas urgentes tiene cada una; en Safety Go es el mismo filtro del botón de
+  la cabecera. Una planta sin rondas programadas lo dice, en vez de desaparecer.
+- **Próximas** (Safety Go) / panel **De un vistazo** (Safety Desk): cifras de
+  vencido / esta semana / más adelante, tarjeta por planta con su próxima ronda
+  (se despliega para ver todas) y las próximas caducidades. En tablet y ordenador
+  van una junto a otra.
+- **Mes**: cada día lleva una marca por entrada, con el código de la planta (BAR,
+  TAR…) y el tipo. Tocar un tipo en la leyenda (*Rondas · Caducidades · Hechas*) lo
+  oculta o lo muestra. Tocar un día enseña sus entradas; si está vacío, enseña lo
+  siguiente que hay.
+- Tocar una ronda ofrece iniciar la visita ya situada en esa planta; tocar una
+  caducidad abre el seguimiento de la acción.
+
+Si el cuestionario nunca se ha hecho en una planta, su primera ronda se espera hoy.
+La periodicidad admite además una fecha de arranque por planta (`startDates`) que
+solo se usa mientras no haya ninguna visita hecha; la demostración la usa para
+repartir las primeras rondas en las próximas semanas. Si una ronda está vencida,
+las siguientes se cuentan desde hoy (se hará con retraso).
 
 **Filtro de planta.** El botón de arriba («Planta») filtra calendario,
 cuestionarios, desviaciones y acciones por centro de trabajo. Cada opción muestra
@@ -677,8 +712,10 @@ plan de acción) en los datos compartidos:
 
 Al cargarla, las fechas se reparten en las últimas semanas (la copia original es de
 agosto y todo saldría vencido), de modo que hay desviaciones y acciones vencidas y
-otras por vencer, y se activa la periodicidad en tres cuestionarios para que el
-calendario tenga rondas previstas.
+otras por vencer (las acciones sin cerrar se reparten entre vencida, esta semana y
+más adelante), y se activa la periodicidad en tres cuestionarios, con las primeras
+rondas repartidas en las próximas semanas, para que el calendario tenga rondas
+previstas por planta.
 
 ### 11.4 ter Safety Desk y Safety Go: elegir a qué parte entrar
 
@@ -742,6 +779,7 @@ campo/                      WebApp de campo
     ├── records.js          Edición de desviaciones/acciones (escribe también en la visita)
     ├── home.js · calendar.js · forms.js · deviations.js · actions.js
     └── shell.js            Navegación, cabecera, cuenta y arranque
+js/calendar-data.js         Datos del calendario (rondas, caducidades, urgencia), comunes a Desk y Go
 js/sync.js                  Motor de sincronización (compartido con la APP principal)
 js/mailer.js                Cola de envío de informes por correo
 server/routes/sync.js       API de sincronización: /api/sync/push · pull · head

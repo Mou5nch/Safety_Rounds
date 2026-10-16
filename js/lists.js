@@ -1073,7 +1073,7 @@
     return tr;
   }
 
-  function editAction(a) {
+  function editAction(a, onDone) {
     var title = el('input', { class: 'input', value: a.title || '' });
     var resp = el('input', { class: 'input', value: a.responsible || '', placeholder: 'Persona o departamento' });
     var due = el('input', { class: 'input', type: 'date', value: a.dueDate || '' });
@@ -1105,7 +1105,7 @@
             a.notes = notes.value;
             Store.put('actions', a);
             UI.toast('Acción actualizada.');
-            renderActions();
+            if (onDone) onDone(); else renderActions();
           }
         }
       ]
@@ -1181,6 +1181,7 @@
     history: renderHistory,
     deviations: renderDeviations,
     actions: renderActions,
+    editAction: editAction,
     resetFolder: function () { ui.folderId = ''; ui.search = ''; }
   };
 })(window);
