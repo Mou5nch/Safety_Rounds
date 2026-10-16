@@ -698,8 +698,8 @@ Límites: 10 destinatarios por envío, PDF de hasta 12 MB y 40 envíos por hora 
 
 Para tener algo que gestionar desde el primer momento, la WebApp de campo y la APP
 principal pueden cargar **la misma demostración que ven las cuentas de demostración**
-(`demo-data.json`: 4 cuestionarios, 4 plantas, visitas con desviaciones y fotos, y
-plan de acción) en los datos compartidos:
+(`demo-data.json`: 3 cuestionarios, 4 plantas, 8 visitas con desviaciones, fotos y
+firmas, y plan de acción) en los datos compartidos:
 
 - **Automática**: la primera vez que un administrador o supervisor entra con los
   datos compartidos en blanco (sin visitas, desviaciones ni acciones, y a lo sumo el
@@ -710,12 +710,18 @@ plan de acción) en los datos compartidos:
   **Sustituye todos los datos compartidos**; la identidad del departamento (nombre,
   logotipo) no se toca.
 
-Al cargarla, las fechas se reparten en las últimas semanas (la copia original es de
-agosto y todo saldría vencido), de modo que hay desviaciones y acciones vencidas y
-otras por vencer (las acciones sin cerrar se reparten entre vencida, esta semana y
-más adelante), y se activa la periodicidad en tres cuestionarios, con las primeras
-rondas repartidas en las próximas semanas, para que el calendario tenga rondas
+Al cargarla, las fechas se recolocan alrededor de hoy (la visita más reciente, hace 4
+días, y cada anterior, 6 días antes; desviaciones y acciones se mueven con su visita y
+conservan su plazo respecto a ella), de modo que hay acciones vencidas y otras por
+vencer. Los tres cuestionarios traen su periodicidad (la ronda de seguridad y la lista
+de carretillas, mensuales, y OPS, semanal) y las primeras rondas pendientes de cada
+planta se reparten en las próximas semanas, para que el calendario tenga rondas
 previstas por planta.
+
+La demostración actual es la copia de seguridad exportada el 16 de octubre de 2026.
+Para renovarla: *Ajustes y datos → Descargar copia* y sustituir `demo-data.json` por esa
+exportación. Ese archivo se sirve sin autenticación y el repositorio es público: no debe
+llevar datos reales de personas ni de la empresa.
 
 ### 11.4 ter Safety Desk y Safety Go: elegir a qué parte entrar
 

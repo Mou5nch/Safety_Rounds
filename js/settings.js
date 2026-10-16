@@ -878,7 +878,7 @@
   function loadSharedDemo() {
     UI.confirm({
       title: 'Cargar la demostración completa',
-      text: 'Sustituye TODOS los datos compartidos (cuestionarios, plantas, visitas, desviaciones y plan de acción) por la demostración: 4 cuestionarios, 4 plantas, visitas con desviaciones y acciones, con fechas de las últimas semanas. Se verá también en la WebApp de campo y en el resto de dispositivos. No se puede deshacer; descarga antes una copia de seguridad si lo necesitas.',
+      text: 'Sustituye TODOS los datos compartidos (cuestionarios, plantas, visitas, desviaciones y plan de acción) por la demostración: 3 cuestionarios, 4 plantas, visitas con desviaciones y acciones, con fechas de las últimas semanas. Se verá también en la WebApp de campo y en el resto de dispositivos. No se puede deshacer; descarga antes una copia de seguridad si lo necesitas.',
       confirmLabel: 'Sí, cargar la demostración', confirmIcon: 'download'
     }).then(function (ok) {
       if (!ok) return;
