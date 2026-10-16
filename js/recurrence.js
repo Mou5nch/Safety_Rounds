@@ -93,7 +93,10 @@
         var center = Store.get('catalogs', centerId);
         if (!center) return; // el centro se eliminó después de activar la periodicidad
         var last = lastVisitDate(f.id, centerId);
-        var date = last ? nextDate(last, f.recurrence) : UI.fmtDateInput(new Date());
+        // Sin ninguna visita hecha, la primera ronda se espera hoy, salvo que la
+        // periodicidad traiga una fecha de arranque para ese centro (startDates).
+        var start = (f.recurrence.startDates || {})[centerId];
+        var date = last ? nextDate(last, f.recurrence) : (start || UI.fmtDateInput(new Date()));
         var daysUntil = UI.relativeDays(date);
         out.push({
           formId: f.id, formName: f.name, formColor: f.color || '#1E2B6F', formIcon: f.icon || 'clipboard',
@@ -115,7 +118,8 @@
    * semanas, etc.). Se proyectan encadenando la periodicidad a partir de la
    * próxima fecha. La próxima, si está vencida, se queda en su fecha real; las
    * proyecciones posteriores que ya caen en el pasado no se muestran: una ronda
-   * semanal sin hacer es UNA ronda vencida, no una por cada semana transcurrida.
+   * semanal sin hacer es UNA ronda vencida, no una por cada semana transcurrida. Y si
+   * la próxima está vencida, las siguientes se cuentan desde hoy (se hará con retraso).
    */
   function occurrences(fromStr, toStr) {
     var out = [];
@@ -131,7 +135,8 @@
             overdue: UI.relativeDays(date) < 0, projected: !first
           }));
         }
-        date = nextDate(date, rec);
+        // Una ronda vencida se hará tarde: el ciclo siguiente cuenta desde hoy, no desde su fecha.
+        date = nextDate(first && date < todayStr ? todayStr : date, rec);
         first = false;
       }
     });
