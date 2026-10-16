@@ -1,0 +1,119 @@
+/* ==========================================================================
+   Safety Go — Vista de móvil en ordenador (marco de teléfono)
+   Solo se usa con html.go-stage (ordenador: pantalla ancha y ratón). El marco
+   es CSS puro: sin imágenes.
+   ========================================================================== */
+
+.go-stage body {
+  margin: 0; min-height: 100vh; min-height: 100dvh; color: #fff; background-color: #1E2B6F;
+  background-image:
+    radial-gradient(70% 55% at 85% 105%, rgba(241, 107, 107, .28) 0%, transparent 60%),
+    radial-gradient(90% 70% at 0% 0%, rgba(67, 86, 174, .65) 0%, transparent 62%),
+    linear-gradient(165deg, #1E2B6F 0%, #26357F 60%, #1E2B6F 100%);
+  background-attachment: fixed;
+}
+/* La aplicación vive dentro del teléfono (iframe); la de esta página no se pinta */
+.go-stage #fApp, .go-stage #sheetRoot, .go-stage #modalRoot, .go-stage .toasts { display: none !important; }
+
+.stage { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; padding: 18px 32px 28px; max-width: 1240px; margin: 0 auto; }
+
+/* ---------- Cabecera ---------- */
+.stage__top { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+.stage__brand { display: flex; align-items: center; gap: 11px; font-size: 17px; font-weight: 700; letter-spacing: -.02em; }
+.stage__mark { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: rgba(255, 255, 255, .1); border: 1px solid rgba(255, 255, 255, .18); }
+.stage__toplink {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 14px; border-radius: 20px;
+  color: #fff; font-size: 14px; font-weight: 600; text-decoration: none;
+  background: rgba(255, 255, 255, .1); border: 1px solid rgba(255, 255, 255, .18);
+  transition: background .15s var(--ease, ease);
+}
+.stage__toplink:hover { background: rgba(255, 255, 255, .18); }
+
+/* ---------- Cuerpo ---------- */
+.stage__main {
+  flex: 1; display: grid; grid-template-columns: minmax(300px, 420px) auto; align-items: center; justify-content: center;
+  gap: clamp(36px, 7vw, 110px); padding: 16px 0 0;
+}
+
+.stage__info { animation: stage-in .55s var(--ease, ease) both; }
+.stage__eyebrow {
+  display: inline-flex; align-items: center; gap: 8px; height: 30px; padding: 0 13px; border-radius: 15px;
+  font-size: 12.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  background: rgba(241, 107, 107, .2); color: #FFD3D3; border: 1px solid rgba(241, 107, 107, .4);
+}
+.stage__title { margin: 18px 0 0; font-size: clamp(32px, 3.6vw, 46px); font-weight: 700; letter-spacing: -.035em; line-height: 1.08; }
+.stage__text { margin: 16px 0 0; font-size: 16.5px; line-height: 1.6; color: rgba(255, 255, 255, .78); }
+
+.stage__steps { margin: 26px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; }
+.stage__steps li {
+  display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-radius: 16px; font-size: 15px; font-weight: 550;
+  background: rgba(255, 255, 255, .08); border: 1px solid rgba(255, 255, 255, .14);
+}
+.stage__steps b {
+  width: 28px; height: 28px; flex: none; border-radius: 50%; display: grid; place-items: center;
+  font-size: 13px; background: #F16B6B; color: #fff;
+}
+
+.stage__actions { margin-top: 26px; display: flex; flex-wrap: wrap; gap: 12px; }
+.stage__btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 9px; min-height: 52px; padding: 0 22px; border-radius: 16px;
+  font: inherit; font-size: 15.5px; font-weight: 650; color: #fff; text-decoration: none; cursor: pointer;
+  background: rgba(255, 255, 255, .1); border: 1.5px solid rgba(255, 255, 255, .28);
+  transition: background .15s var(--ease, ease), transform .1s var(--ease, ease);
+}
+.stage__btn:hover { background: rgba(255, 255, 255, .18); }
+.stage__btn:active { transform: scale(.98); }
+.stage__btn--primary { background: linear-gradient(135deg, #F57878 0%, #E05C5C 100%); border-color: transparent; box-shadow: 0 12px 26px rgba(241, 107, 107, .42); }
+.stage__btn--primary:hover { background: linear-gradient(135deg, #F57878 0%, #E05C5C 100%); box-shadow: 0 16px 32px rgba(241, 107, 107, .52); }
+.stage__toplink:focus-visible, .stage__btn:focus-visible, .stage__copy:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+
+.stage__note { margin: 26px 0 0; font-size: 13.5px; line-height: 1.6; color: rgba(255, 255, 255, .62); }
+.stage__note strong { color: rgba(255, 255, 255, .9); font-weight: 600; overflow-wrap: anywhere; }
+.stage__copy { color: #fff; font: inherit; font-size: 13.5px; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; padding: 4px 2px; background: none; border: 0; }
+
+/* ---------- Teléfono ---------- */
+.stage__device-wrap { position: relative; justify-self: center; animation: stage-in .55s .08s var(--ease, ease) both; }
+.device {
+  position: absolute; top: 0; left: 0; width: 414px; height: 868px; padding: 12px; box-sizing: border-box;
+  border-radius: 66px; transform-origin: top left;
+  background: linear-gradient(150deg, #3C4378 0%, #181D4A 38%, #0A0E2B 100%);
+  box-shadow:
+    0 0 0 1.5px rgba(255, 255, 255, .16) inset,
+    0 0 0 1px #05071A,
+    0 56px 90px -24px rgba(0, 0, 0, .6),
+    0 24px 44px rgba(0, 0, 0, .35);
+}
+.device__btn { position: absolute; width: 4px; border-radius: 3px; background: #1C2252; box-shadow: 0 0 0 .5px rgba(255, 255, 255, .12) inset; }
+.device__btn--silent { left: -3px; top: 124px; height: 30px; }
+.device__btn--up { left: -3px; top: 184px; height: 58px; }
+.device__btn--down { left: -3px; top: 254px; height: 58px; }
+.device__btn--power { right: -3px; top: 214px; height: 96px; }
+
+.device__screen { position: relative; width: 390px; height: 844px; border-radius: 54px; overflow: hidden; background: #F3F4F8; isolation: isolate; }
+.device__frame { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: #F3F4F8; display: block; }
+.device__status {
+  position: absolute; top: 0; left: 0; right: 0; height: 44px; z-index: 3; pointer-events: none;
+  display: flex; align-items: center; justify-content: space-between; padding: 6px 30px 0 34px; color: #fff;
+  font-size: 15px; font-weight: 650; letter-spacing: -.01em;
+}
+.device__island { position: absolute; top: 11px; left: 50%; width: 118px; height: 34px; margin-left: -59px; border-radius: 20px; background: #000; }
+.device__sys { display: flex; align-items: center; gap: 6px; }
+.device__home { position: absolute; bottom: 0; left: 0; right: 0; height: 22px; z-index: 3; pointer-events: none; display: grid; place-items: center; }
+.device__home span { width: 136px; height: 5px; margin-top: 4px; border-radius: 3px; background: #141B3D; opacity: .82; }
+
+/* En ventanas bajas (portátiles) el texto se compacta: el teléfono debe verse entero sin hacer scroll,
+   y su tamaño se ajusta al alto de la ventana (ver fit() en js/stage.js). */
+@media (max-height: 880px) {
+  .stage__title { font-size: clamp(28px, 3.2vw, 38px); margin-top: 14px; }
+  .stage__text { margin-top: 12px; font-size: 15.5px; }
+  .stage__steps { margin-top: 18px; gap: 8px; }
+  .stage__steps li { padding: 9px 14px; font-size: 14px; }
+  .stage__actions { margin-top: 18px; }
+}
+@media (max-height: 800px) {
+  .stage__steps, .stage__note { display: none; }
+  .stage__actions { margin-top: 22px; }
+}
+
+@keyframes stage-in { from { opacity: 0; transform: translateY(14px); } }
+@media (prefers-reduced-motion: reduce) { .stage__info, .stage__device-wrap { animation: none; } }

@@ -901,11 +901,7 @@
       confirmIcon: 'download'
     }).then(function (ok) {
       if (!ok) return;
-      fetch('demo-data.json').then(function (res) {
-        if (!res.ok) throw new Error('No se ha podido descargar la copia de demostración.');
-        return res.json();
-      }).then(function (data) {
-        Store.importAll(data, true);
+      Seed.loadSharedDemo({ local: true }).then(function () {
         App.refreshBadges();
         App.updateStorage();
         render();

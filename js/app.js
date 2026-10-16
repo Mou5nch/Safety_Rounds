@@ -223,19 +223,9 @@
   // arranque, en vez de quedarse a medias para siempre como pasaba con la
   // marca de una sola vez que se usaba antes.
   function loadDemoDataIfNeeded() {
-    if (cachedRole() !== 'usuario') return Promise.resolve(false);
-    if (Store.settings().seeded) return Promise.resolve(false);
-
-    return fetch('demo-data.json').then(function (res) {
-      if (!res.ok) throw new Error('No se ha podido cargar la copia de demostración.');
-      return res.json();
-    }).then(function (data) {
-      Store.importAll(data, true);
-      return true;
-    }).catch(function (e) {
-      console.error(e);
-      return false;
-    });
+    // Mismos datos de ejemplo que ve Safety Go (con las fechas repartidas en las
+    // últimas semanas): ver Seed.ensureLocalDemo.
+    return Seed.ensureLocalDemo();
   }
 
   function cachedRole() {

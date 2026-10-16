@@ -687,17 +687,30 @@ La aplicación tiene dos versiones con la misma cuenta y los mismos datos:
 | Versión | Para qué | Dirección |
 |---|---|---|
 | **Safety Desk** | Gestión y análisis: dashboard, configuración de cuestionarios, desviaciones, plan de acción. Pensada para el ordenador. | `/` |
-| **Safety Go** | Trabajo en planta: calendario de rondas, visitas con fotos y firma, sin conexión. Pensada para móvil y tablet. | `/campo/` |
+| **Safety Go** | Trabajo en planta: calendario de rondas, visitas con fotos y firma, sin conexión. Pensada para móvil y tablet; en un ordenador se abre dentro de un teléfono en pantalla. | `/campo/` |
 
 - **Quién tiene acceso a cuál**: se decide por usuario en el *Panel de accesos* (columna
   *Acceso*, con un interruptor «Desk» y otro «Go» en cada fila, y al crear un usuario).
-  Sin cambios, todos los perfiles reales tienen las dos y las cuentas de demostración solo
-  Desk. La administración siempre conserva Desk (desde ahí se gestionan los accesos) y
-  nadie puede quedarse sin ninguna.
+  Sin cambios, **todos los perfiles tienen las dos, también las cuentas de demostración**:
+  quien se registra puede probar Safety Desk y Safety Go. La administración siempre conserva
+  Desk (desde ahí se gestionan los accesos) y nadie puede quedarse sin ninguna.
 - **Al iniciar sesión**: quien tiene las dos ve la pantalla **«¿Cómo quieres entrar?»**,
   con *Safety Desk* como opción predeterminada (marcada y lista para pulsar Enter). Quien
   solo tiene una entra directamente en ella, sin ver esa pantalla. Un enlace directo
   (p. ej. `/campo/`) se respeta mientras la cuenta tenga acceso a esa parte.
+- **Vista de móvil (Safety Go en un ordenador)**: en un ordenador (pantalla ancha y ratón),
+  `/campo/` no ocupa toda la pantalla: se abre **un teléfono en pantalla** con Safety Go
+  dentro, a tamaño de móvil real, para pulsar y rellenar visitas como en planta. Junto al
+  teléfono hay una guía de tres pasos, «Volver a Safety Desk» y «Pantalla completa» (y, en
+  pantalla completa, «Ver como móvil» en *Mi cuenta*). En un móvil, una tablet o una pantalla
+  táctil, Safety Go ocupa siempre toda la pantalla. El teléfono es la propia aplicación en un
+  `iframe` de 390 px, así que aplica de verdad su diseño de móvil.
+- **Cuentas de demostración**: sus datos de ejemplo (los mismos de `demo-data.json`, con las
+  fechas repartidas en las últimas semanas) viven en el navegador y **los comparten Safety Desk
+  y Safety Go** (mismo almacenamiento): lo que se haga en el teléfono se ve en Desk, y al revés.
+  No se sincronizan con el servidor ni con otros dispositivos, y no envían correo desde el
+  servidor. Si luego entra en ese navegador una cuenta real, su primera sincronización guarda
+  esos datos en una copia local y empieza con los del servidor: no se mezclan con los reales.
 - **Cambio rápido**: «Cambiar a Safety Go» en el menú lateral de Desk y «Cambiar a Safety
   Desk» en *Mi cuenta* de Go abren esa misma pantalla, sin volver a escribir la contraseña,
   con la otra versión propuesta. Solo se ofrece a quien tiene las dos.
@@ -723,6 +736,7 @@ campo/                      WebApp de campo
 ├── manifest.webmanifest    Instalación como app (ámbito /campo/)
 ├── sw.js                   Service worker propio (funciona sin conexión)
 ├── css/campo.css           Estilos adaptados a móvil y tablet
+├── css/stage.css · js/stage.js   Vista de móvil: teléfono en pantalla para ordenadores
 └── js/
     ├── core.js             Filtro de planta, hojas inferiores, visor de fotos
     ├── records.js          Edición de desviaciones/acciones (escribe también en la visita)

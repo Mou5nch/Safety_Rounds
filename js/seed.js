@@ -437,7 +437,8 @@
    * generales no se tocan) y lo anota en los ajustes compartidos para que no
    * vuelva a cargarse sola. Devuelve una promesa.
    */
-  function loadSharedDemo() {
+  function loadSharedDemo(opts) {
+    var local = !!(opts && opts.local);
     return fetch('/demo-data.json', { cache: 'no-cache' }).then(function (res) {
       if (!res.ok) throw new Error('No se ha podido descargar la copia de demostración.');
       return res.json();
@@ -446,7 +447,26 @@
       addDemoRecurrence(data);
       Store.importAll(data, true, { keepSettings: true });
       Store.saveSettings({ seeded: true, demoLoadedAt: Store.nowISO() });
+      // Demostración propia de este navegador (cuenta de demostración, sin servidor): si
+      // más tarde entra aquí una cuenta real, su primera sincronización guarda estos datos
+      // aparte y empieza con los del servidor, en vez de subirlos a los datos reales.
+      if (local) { try { localStorage.setItem('sr:presync', '1'); } catch (e) {} }
       return true;
+    });
+  }
+
+  /**
+   * Cuenta de demostración: carga los datos de ejemplo la primera vez que entra en
+   * este navegador. Safety Desk y Safety Go leen del mismo almacenamiento del
+   * navegador, así que los dos ven lo mismo (y lo que se haga en uno se ve en el otro).
+   */
+  function ensureLocalDemo() {
+    var role = null;
+    try { role = (JSON.parse(localStorage.getItem('sr:auth') || 'null') || {}).role; } catch (e) {}
+    if (role !== 'usuario' || Store.settings().seeded) return Promise.resolve(false);
+    return loadSharedDemo({ local: true }).then(function () { return true; }).catch(function (e) {
+      console.warn('[seed] no se ha podido cargar la demostración', e);
+      return false;
     });
   }
 
@@ -486,6 +506,6 @@
 
   global.Seed = {
     ensure: ensure, loadDemoData: loadDemoData, demoForm: demoForm,
-    loadSharedDemo: loadSharedDemo, ensureSharedDemo: ensureSharedDemo
+    loadSharedDemo: loadSharedDemo, ensureSharedDemo: ensureSharedDemo, ensureLocalDemo: ensureLocalDemo
   };
 })(window);

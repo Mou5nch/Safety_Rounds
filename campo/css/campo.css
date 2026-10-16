@@ -22,6 +22,10 @@
   --f-card: 0 1px 2px rgba(20, 27, 61, .05), 0 2px 8px rgba(20, 27, 61, .04);
 }
 
+/* Dentro del teléfono de la vista de móvil (iframe), la barra de estado y el indicador de
+   inicio simulados ocupan el lugar de las zonas seguras de un móvil real. */
+html.go-frame { --f-safe-t: 44px; --f-safe-b: 22px; }
+
 html { -webkit-text-size-adjust: 100%; }
 body.f-body {
   font-size: 16px; background: var(--surface);
