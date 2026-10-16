@@ -341,7 +341,7 @@
       el('option', { value: 'usuario', text: 'Usuario (demo)' })
     ]);
 
-    // Acceso a las dos versiones: por defecto, las dos (las cuentas de demostración, solo Desk)
+    // Acceso a las dos versiones: por defecto, las dos
     var access = { desk: true, go: true };
     var accessBox = el('div', { class: 'access-switches' });
     function paintAccess() {
@@ -359,7 +359,7 @@
       });
     }
     roleEl.addEventListener('change', function () {
-      access = { desk: true, go: roleEl.value !== 'usuario' };
+      access = { desk: true, go: true };
       paintAccess();
     });
     paintAccess();

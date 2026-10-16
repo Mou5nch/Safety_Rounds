@@ -22,20 +22,43 @@
 
 <link rel="stylesheet" href="../css/app.css">
 <link rel="stylesheet" href="css/campo.css">
+<link rel="stylesheet" href="css/stage.css">
 </head>
 <body class="f-body">
 
 <script>
-// Guardia de sesión: sin usuario en caché no hay nada que mostrar todavía.
+// Guardia de sesión y modo de visualización.
+//   device  móvil, tablet o pantalla táctil: Safety Go ocupa toda la pantalla
+//   stage   ordenador (pantalla ancha y ratón): se muestra dentro de un teléfono en pantalla
+//   frame   la propia aplicación dentro de ese teléfono (iframe)
+//   full    ordenador con «Pantalla completa»
 // La sesión real se confirma con el servidor desde js/shell.js cuando hay red.
 (function () {
+  var inFrame = true;
+  try { inFrame = window.top !== window.self; } catch (e) {}
+
+  // Salir de la aplicación (login, Safety Desk) siempre en la ventana completa, no dentro del teléfono
+  window.__leave = function (url) {
+    var w = inFrame ? window.top : window;
+    try { w.location.replace(new URL(url, location.href).href); } catch (e) { location.replace(url); }
+  };
+
   try {
     var raw = localStorage.getItem('sr:auth');
-    if (!raw) { location.replace('../login.html?next=/campo/'); return; }
+    if (!raw) { window.__leave('../login.html?next=/campo/'); return; }
     // Una cuenta sin acceso a Safety Go (solo gestión) va a Safety Desk
     var access = (JSON.parse(raw) || {}).access;
-    if (access && access.go === false) location.replace('../index.html');
+    if (access && access.go === false) { window.__leave('../index.html'); return; }
   } catch (e) { /* almacenamiento bloqueado: se deja pasar, store.js ya avisa */ }
+
+  var wide = false, mouse = false, full = false;
+  try {
+    wide = window.matchMedia('(min-width: 1000px) and (min-height: 600px)').matches;
+    mouse = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+    full = /[?&]full=1/.test(location.search) || sessionStorage.getItem('sr:go-full') === '1';
+  } catch (e) {}
+  window.__goMode = inFrame ? 'frame' : (wide && mouse) ? (full ? 'full' : 'stage') : 'device';
+  document.documentElement.classList.add('go-' + window.__goMode);
 })();
 </script>
 
@@ -89,25 +112,25 @@
 <div class="toasts" id="toasts"></div>
 <div id="modalRoot"></div>
 
-<script src="../vendor/jspdf.umd.min.js"></script>
-<script src="../js/icons.js"></script>
-<script src="../js/store.js"></script>
-<script src="../js/sync.js"></script>
-<script src="../js/ui.js"></script>
-<script src="../js/recurrence.js"></script>
-<script src="../js/seed.js"></script>
-<script src="../js/builder.js"></script>
-<script src="../js/runner.js"></script>
-<script src="../js/pdf.js"></script>
-<script src="../js/mailer.js"></script>
-<script src="../js/share.js"></script>
-<script src="js/core.js"></script>
-<script src="js/records.js"></script>
-<script src="js/home.js"></script>
-<script src="js/calendar.js"></script>
-<script src="js/forms.js"></script>
-<script src="js/deviations.js"></script>
-<script src="js/actions.js"></script>
-<script src="js/shell.js"></script>
+<script>
+// En la vista de móvil de un ordenador solo se carga el marco del teléfono; la aplicación
+// se carga dentro del teléfono (iframe). En el resto de casos, la aplicación entera.
+(function () {
+  var mode = window.__goMode;
+  if (!mode) return;                       // se está redirigiendo (sin sesión o sin acceso)
+  var list = mode === 'stage'
+    ? ['../js/icons.js', 'js/stage.js']
+    : ['../vendor/jspdf.umd.min.js', '../js/icons.js', '../js/store.js', '../js/sync.js', '../js/ui.js',
+       '../js/recurrence.js', '../js/seed.js', '../js/builder.js', '../js/runner.js', '../js/pdf.js',
+       '../js/mailer.js', '../js/share.js', 'js/core.js', 'js/records.js', 'js/home.js', 'js/calendar.js',
+       'js/forms.js', 'js/deviations.js', 'js/actions.js', 'js/shell.js'];
+  list.forEach(function (src) {
+    var s = document.createElement('script');
+    s.src = src;
+    s.async = false;                       // se ejecutan en este orden
+    document.body.appendChild(s);
+  });
+})();
+</script>
 </body>
 </html>

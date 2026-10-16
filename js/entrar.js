@@ -21,7 +21,7 @@
 
   function accessOf(u) {
     if (u && u.access) return u.access;
-    return { desk: true, go: !u || u.role !== 'usuario' };           // sin dato: valor por defecto del rol
+    return { desk: true, go: true };                                  // sin dato: las dos versiones
   }
 
   function cache(u) {

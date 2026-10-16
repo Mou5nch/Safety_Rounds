@@ -34,7 +34,7 @@
     if (adminLink) adminLink.hidden = user.role !== 'admin';
 
     // «Cambiar a Safety Go»: solo para quien tiene acceso a las dos versiones
-    var a = user.access || { desk: true, go: user.role !== 'usuario' };
+    var a = user.access || { desk: true, go: true };
     var sw = document.getElementById('switchGo');
     if (sw) {
       sw.hidden = !(a.desk && a.go);

@@ -242,6 +242,13 @@
       ])
     ]));
 
+    var offSync = function () {};
+    if (me.role === 'usuario') {
+      // Cuenta de demostración: sin servidor; los datos viven en este navegador y los comparten Desk y Go
+      body.appendChild(el('div', { class: 'f-section-title', text: 'Cuenta de demostración' }));
+      body.appendChild(el('div', { class: 'f-card f-card--flat' },
+        el('div', { class: 'f-hint', style: { padding: '12px 0' }, text: 'Estás probando Safety Rounds con datos de ejemplo. Viven en este navegador y los comparten Safety Desk y Safety Go: lo que hagas aquí lo verás en Safety Desk, y al revés.' })));
+    } else {
     // --- Sincronización ---
     var box = el('div', { class: 'f-card f-card--flat' });
     var line = el('div', { class: 'f-row' });
@@ -258,7 +265,7 @@
       if (st.error) when.textContent += ' ' + st.error;
     }
     paint(Sync.status());
-    var offSync = Sync.on(function (st) { paint(st); });
+    offSync = Sync.on(function (st) { paint(st); });
     box.appendChild(el('button', {
       class: 'btn btn--navy btn--block f-btn', style: { marginTop: '12px' },
       html: ico('refresh', 18) + '<span>Sincronizar ahora</span>',
@@ -266,6 +273,7 @@
     }));
     body.appendChild(el('div', { class: 'f-section-title', text: 'Sincronización' }));
     body.appendChild(box);
+    }
 
     // --- Dispositivo ---
     var dev = el('div', { class: 'f-card f-card--flat' });
@@ -300,11 +308,38 @@
       ]));
     }
 
+    if (me.role === 'usuario') {
+      body.appendChild(el('div', { class: 'f-section-title', text: 'Datos de demostración' }));
+      body.appendChild(el('div', { class: 'f-card f-card--flat' }, [
+        el('div', { class: 'f-hint', style: { padding: '12px 0 4px' }, text: 'Vuelve a cargar los datos de ejemplo (cuestionarios, plantas, visitas, desviaciones y acciones). Sustituye lo que tengas ahora en este navegador, en Safety Go y en Safety Desk.' }),
+        el('button', {
+          class: 'btn btn--ghost btn--block f-btn', style: { margin: '10px 0 12px' }, html: ico('download', 18) + '<span>Restaurar la demostración</span>',
+          onclick: function () {
+            UI.confirm({
+              title: 'Restaurar la demostración', text: 'Sustituye TODOS tus datos de este navegador por los de ejemplo. No se puede deshacer.',
+              confirmLabel: 'Sí, restaurar', cancelLabel: 'Cancelar', icon: 'download', confirmIcon: 'download'
+            }).then(function (ok) {
+              if (!ok) return;
+              Seed.loadSharedDemo({ local: true }).then(function () {
+                UI.toast('Demostración restaurada.');
+                Shell.render();
+              }).catch(function (e) { UI.toast(e.message || 'No se ha podido restaurar la demostración.', 'err'); });
+            });
+          }
+        })
+      ]));
+    }
+
     body.appendChild(el('div', { class: 'f-stack', style: { marginTop: '18px' } }, [
       // «Cambiar a Safety Desk»: solo para quien tiene acceso a las dos versiones
       (accessOf(me).desk && accessOf(me).go) ? el('a', {
-        class: 'btn btn--ghost btn--block f-btn', href: '../entrar.html?from=go',
+        class: 'btn btn--ghost btn--block f-btn', href: '../entrar.html?from=go', target: '_top',
         html: ico('monitor', 18) + '<span>Cambiar a Safety Desk</span>'
+      }) : null,
+      // En un ordenador con «Pantalla completa»: volver a verla dentro del teléfono
+      window.__goMode === 'full' ? el('button', {
+        class: 'btn btn--ghost btn--block f-btn', type: 'button', html: ico('smartphone', 18) + '<span>Ver como móvil</span>',
+        onclick: function () { try { sessionStorage.removeItem('sr:go-full'); } catch (e) {} location.href = '/campo/'; }
       }) : null,
       el('button', {
         class: 'btn btn--danger btn--block f-btn', html: ico('logout', 18) + '<span>Cerrar sesión</span>',
@@ -315,13 +350,18 @@
     Campo.sheet({ title: 'Mi cuenta', body: body, onClose: offSync });
   }
 
-  /** Versiones a las que tiene acceso la cuenta (sin dato guardado: las dos, salvo las de demostración). */
+  /** Versiones a las que tiene acceso la cuenta (sin dato guardado: las dos). */
   function accessOf(me) {
-    return (me && me.access) || { desk: true, go: !me || me.role !== 'usuario' };
+    return (me && me.access) || { desk: true, go: true };
   }
 
   function roleLabel(r) {
     return { admin: 'Administración', supervisor: 'Supervisor', inspector: 'Inspector', usuario: 'Demostración' }[r] || 'Usuario';
+  }
+
+  /** Salir a otra página (login, Safety Desk) en la ventana completa, no dentro del teléfono de la vista de móvil. */
+  function leave(url) {
+    if (window.__leave) window.__leave(url); else location.replace(url);
   }
 
   function logout() {
@@ -329,7 +369,7 @@
     var go = function () {
       fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }).catch(function () {}).then(function () {
         try { localStorage.removeItem('sr:auth'); } catch (e) {}
-        location.replace('../login.html?next=/campo/');
+        leave('../login.html?next=/campo/');
       });
     };
     if (!pending) { go(); return; }
@@ -432,25 +472,19 @@
     window.scrollTo(0, y);
   }
 
-  function blocked(msg, sub) {
-    document.body.innerHTML = '<div style="max-width:440px;margin:18vh auto 0;padding:24px;font-family:sans-serif;text-align:center">' +
-      '<h1 style="font-size:20px">' + esc(msg) + '</h1><p style="color:#4A5378;line-height:1.6">' + esc(sub) + '</p>' +
-      '<a href="../index.html" style="display:inline-block;margin-top:10px;padding:12px 20px;background:#1E2B6F;color:#fff;border-radius:10px;text-decoration:none;font-weight:600">Ir a la APP principal</a></div>';
-  }
-
   function boot() {
     var me = Campo.auth();
-    if (me.access && me.access.go === false) { location.replace('../index.html'); return; }
-    if (me.role === 'usuario') {
-      blocked('Cuenta de demostración', 'La WebApp de campo trabaja con los datos reales del departamento. Las cuentas de demostración usan la APP principal con sus propios datos de ejemplo.');
-      return;
-    }
+    if (me.access && me.access.go === false) { leave('../index.html'); return; }
+    // Cuenta de demostración: sin servidor; los datos de ejemplo viven en este navegador y los
+    // comparten Safety Desk y Safety Go (mismo almacenamiento).
+    var demo = me.role === 'usuario';
 
     Store.init().then(function () {
+      if (demo) Sync.resetForDemo();
       return Sync.start();
     }).then(function () {
-      // Datos compartidos en blanco: un administrador carga la demostración
-      return Seed.ensureSharedDemo();
+      // Demostración: la propia de la cuenta, o (datos compartidos en blanco) la que carga un administrador
+      return demo ? Seed.ensureLocalDemo() : Seed.ensureSharedDemo();
     }).then(function () {
       Store.migrate();
       buildChrome();
@@ -471,7 +505,7 @@
           else if (r.ok) return r.json().then(function (u) {
             try { localStorage.setItem('sr:auth', JSON.stringify({ username: u.username, name: u.name, role: u.role, access: u.access, cachedAt: Date.now() })); } catch (e) {}
             // Si le quitan el acceso a Safety Go mientras tiene la pantalla abierta, se le lleva a Safety Desk
-            if (u.access && u.access.go === false) location.replace('../index.html');
+            if (u.access && u.access.go === false) leave('../index.html');
           });
         }).catch(function () {});
       }

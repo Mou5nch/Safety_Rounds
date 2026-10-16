@@ -386,9 +386,9 @@
       var step = Promise.resolve();
       if (presync && hasData) {
         step = Store.meta.putBackup(Store.exportAll()).then(function () {
-          Store.STORES.forEach(function (s) {
-            if (s !== 'settings') Store.clearStore(s, { quiet: true });
-          });
+          // Todo, ajustes incluidos: las marcas «ya cargada la demostración» de una cuenta
+          // de demostración no deben impedir que una cuenta real reciba la suya.
+          Store.STORES.forEach(function (s) { Store.clearStore(s, { quiet: true }); });
         });
       }
       return step.then(function () {

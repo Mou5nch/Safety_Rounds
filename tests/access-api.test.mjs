@@ -9,7 +9,7 @@
 //   BASE_URL=http://localhost:3100 ADMIN_PASSWORD=admin-local \
 //   SEED_USERS_PASSWORD=Rondas2026! npm run test:access
 //
-// Comprueba: acceso por defecto según el rol, cambio desde el panel, reglas
+// Comprueba: acceso por defecto (todos, también las cuentas de demostración), cambio desde el panel, reglas
 // (la administración conserva Desk, nadie se queda sin acceso), alta de
 // usuarios con acceso y sesión según la versión en uso.
 // ==========================================================================
@@ -31,7 +31,7 @@ const insp = await login('carlos.ruiz', USERS_PASSWORD);
 check('inspector: Desk y Go por defecto', insp.body.access.desk && insp.body.access.go, insp.body);
 const reg = await fetch(BASE + '/api/auth/register', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name:'Demo', email:'demo'+Date.now()+'@x.com', password:'Demo12345' }) });
 const regBody = await reg.json();
-check('cuenta de demostración: solo Desk', regBody.access.desk === true && regBody.access.go === false, regBody);
+check('cuenta de demostración: también Desk y Go (puede probar las dos)', regBody.access.desk === true && regBody.access.go === true, regBody);
 let me = await api(insp, 'GET', '/api/auth/me');
 check('/me incluye el acceso', me.body.access && me.body.access.desk && me.body.access.go, me.body);
 
@@ -67,7 +67,7 @@ check('crear un usuario solo con Go', r.status === 201 && r.body.access.desk ===
 r = await api(admin, 'POST', '/api/admin/users', { username: 'sin.nada.' + RUN, name: 'Sin Nada', role: 'inspector', password: 'Clave12345', access: { desk: false, go: false } });
 check('crear un usuario sin ningún acceso (400)', r.status === 400, r);
 r = await api(admin, 'POST', '/api/admin/users', { username: 'por.defecto.' + RUN, name: 'Por Defecto', role: 'usuario', password: 'Clave12345' });
-check('sin indicar acceso: el del rol (demo → solo Desk)', r.status === 201 && r.body.access.desk && !r.body.access.go, r);
+check('sin indicar acceso: las dos versiones, también para una demo', r.status === 201 && r.body.access.desk && r.body.access.go, r);
 
 console.log('Sesión según la versión en uso');
 const s = await login(ADMIN_EMAIL, ADMIN_PASSWORD);

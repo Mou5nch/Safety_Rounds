@@ -123,7 +123,7 @@
    *    parte; si no, se le lleva a la que sí tiene.
    */
   function route(user) {
-    var a = (user && user.access) || { desk: true, go: !user || user.role !== 'usuario' };
+    var a = (user && user.access) || { desk: true, go: true };
     var next = explicitNext();
     if (next) {
       var toGo = next.indexOf('/campo') === 0;

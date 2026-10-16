@@ -18,14 +18,14 @@ const IDLE_TIMEOUT_MINUTES = 30; // sin actividad, la sesión deja de ser válid
 /**
  * Versiones de la aplicación a las que tiene acceso un usuario.
  *   desk: Safety Desk (gestión)    go: Safety Go (campo)
- * Sin valor guardado: todos los perfiles reales tienen ambas y las cuentas de
- * demostración ('usuario') solo Desk. Dos reglas fijas: la administración
- * siempre conserva Desk (si no, nadie podría volver a gestionar los accesos) y
- * nadie se queda sin acceso a nada.
+ * Sin valor guardado: todos los perfiles tienen ambas, también las cuentas de
+ * demostración (quien se registra puede probar las dos). Dos reglas fijas: la
+ * administración siempre conserva Desk (si no, nadie podría volver a gestionar
+ * los accesos) y nadie se queda sin acceso a nada.
  */
 function accessFrom(u) {
   let desk = (u.access_desk === null || u.access_desk === undefined) ? true : !!u.access_desk;
-  const go = (u.access_go === null || u.access_go === undefined) ? u.role !== 'usuario' : !!u.access_go;
+  const go = (u.access_go === null || u.access_go === undefined) ? true : !!u.access_go;
   if (u.role === 'admin' || (!desk && !go)) desk = true;
   return { desk: desk, go: go };
 }
