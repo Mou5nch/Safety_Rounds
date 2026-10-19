@@ -143,6 +143,13 @@
     } catch (e) { /* modo privado: sin efecto, se volverá a pedir la sesión */ }
   }
 
+  // Cada inicio de sesión (o registro) de una cuenta de demostración restaura los datos
+  // de demo-data.json: la primera pantalla de la aplicación que arranque lo hace (js/seed.js).
+  function markFreshLogin(user) {
+    if (!user || user.role !== 'usuario') return;
+    try { localStorage.setItem('sr:demo:fresh', '1'); } catch (e) { /* sin almacenamiento: no hay datos que restaurar */ }
+  }
+
   function showError(msg) {
     errEl.textContent = msg;
     errEl.hidden = false;
@@ -174,6 +181,7 @@
         regBtn.disabled = false;
         if (!r.ok) { showRegError((r.data && r.data.error) || 'No se ha podido crear la cuenta.'); return; }
         cacheAuth(r.data);
+        markFreshLogin(r.data);
         location.replace(route(r.data));
       }).catch(function () {
         regBtn.disabled = false;
@@ -208,6 +216,7 @@
       btn.disabled = false;
       if (!r.ok) { showError((r.data && r.data.error) || 'No se ha podido iniciar sesión.'); return; }
       cacheAuth(r.data);
+      markFreshLogin(r.data);
       location.replace(route(r.data));
     }).catch(function () {
       btn.disabled = false;

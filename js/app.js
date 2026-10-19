@@ -190,7 +190,9 @@
 
       if (demoLoaded) {
         setTimeout(function () {
-          UI.toast('Cuenta de demostración creada. Hemos cargado datos de ejemplo para que explores la aplicación.', 'info');
+          UI.toast(demoLoaded === 'reset'
+            ? 'Hemos restaurado los datos de demostración.'
+            : 'Cuenta de demostración creada. Hemos cargado datos de ejemplo para que explores la aplicación.', 'info');
         }, 700);
       } else if (created) {
         setTimeout(function () {
@@ -212,16 +214,11 @@
     });
   }
 
-  // Toda cuenta de demostración (rol 'usuario', ya sea autorregistrada o
-  // creada por el administrador) debe encontrar los datos de demo-data.json
-  // la primera vez que entra EN CADA NAVEGADOR. No se guarda una marca de
-  // "ya se hizo" en el servidor —los datos viven solo en este dispositivo,
-  // en IndexedDB— así que la comprobación es: ¿esta cuenta es de
-  // demostración y este navegador todavía no tiene nada guardado (settings
-  // sin "seeded")? Si es que sí, se importa. Si falla (sin red, JSON
-  // corrupto…) no se marca nada como hecho: se reintenta en el siguiente
-  // arranque, en vez de quedarse a medias para siempre como pasaba con la
-  // marca de una sola vez que se usaba antes.
+  // Toda cuenta de demostración (rol 'usuario', ya sea autorregistrada o creada por el
+  // administrador) tiene SIEMPRE los datos de demo-data.json: se cargan la primera vez
+  // en cada navegador, se restauran en cada inicio de sesión y se renuevan si el
+  // archivo ha cambiado (ver Seed.ensureLocalDemo). Si la carga falla (sin red, JSON
+  // corrupto…) no se marca nada como hecho: se reintenta en el siguiente arranque.
   function loadDemoDataIfNeeded() {
     // Mismos datos de ejemplo que ve Safety Go (con las fechas repartidas en las
     // últimas semanas): ver Seed.ensureLocalDemo.

@@ -529,23 +529,28 @@ mano:
   para distinguirla a simple vista de las cuentas que ha dado de alta el
   administrador. Queda igualmente en la base de datos del administrador, con
   su propio registro de sesiones y tiempo conectado.
-- **Solo la primera vez** que la cuenta entra en la aplicación **en cada
-  dispositivo**, se le cargan los datos de ejemplo de
-  [`demo-data.json`](demo-data.json) (cuestionarios, visitas, desviaciones y
-  acciones ya resueltas, para que se vea la aplicación en uso desde el primer
-  momento). Los accesos siguientes con esa misma cuenta en ese mismo
-  navegador —incluido cerrar sesión y volver a entrar— no repiten esa carga
-  ni borran lo que la persona haya ido creando o modificando: al ser una
-  demo, se parte de un mismo punto de partida una sola vez, pero después la
-  cuenta funciona con normalidad. Como todos los datos de trabajo viven en el
-  dispositivo (ver punto 6) y no en el servidor, si la misma cuenta se abre
-  en otro navegador o dispositivo, ahí también se le cargan los datos de
-  ejemplo la primera vez: es justamente lo que hace que «cada acceso» tenga
-  siempre algo que enseñar, en vez de depender de una marca de una sola vez
-  que solo valdría para el navegador donde se registró.
+- **Una cuenta de demostración tiene siempre los datos de
+  [`demo-data.json`](demo-data.json)** (cuestionarios, plantas, visitas con
+  desviaciones, fotos y firmas, y plan de acción). Se cargan:
+  1. **la primera vez** que entra en cada dispositivo;
+  2. **en cada inicio de sesión** (al entrar con usuario y contraseña, o al
+     registrarse): los datos vuelven a ser exactamente los del archivo y se
+     pierde lo que se hubiera cambiado en la sesión anterior. Recargar la página
+     o cambiar entre Safety Desk y Safety Go dentro de la misma sesión **no**
+     borra nada;
+  3. **cuando el archivo cambia** (se compara su fecha de exportación con la de la
+     última carga): quien tenía una versión anterior y no ha cerrado sesión recibe
+     la nueva la próxima vez que abre la aplicación.
+
+  Cada vez se recolocan las fechas alrededor de hoy (ver 11.4 bis). Como todos
+  los datos de trabajo viven en el dispositivo (ver punto 6) y no en el servidor,
+  si la misma cuenta se abre en otro navegador o dispositivo, ahí también se le
+  carga la demo. Si no hay conexión en ese momento, se sigue con los datos que
+  haya y se reintenta en el siguiente arranque.
   Aplica igual a las cuentas con rol `usuario` que cree el propio
   administrador desde el panel de accesos (opción «Usuario (demo)» del
-  formulario), no solo a las autorregistradas.
+  formulario), no solo a las autorregistradas. Las cuentas de administrador,
+  supervisor e inspector **no** la reciben: trabajan con los datos compartidos.
 - Si por lo que sea la primera carga falla (por ejemplo, sin conexión en ese
   instante), la propia cuenta tiene en **Ajustes y datos → Borrar datos** un
   botón **Restaurar datos de demostración** que vuelve a traer la copia sin
@@ -749,7 +754,7 @@ La aplicación tiene dos versiones con la misma cuenta y los mismos datos:
   táctil, Safety Go ocupa siempre toda la pantalla. El teléfono es la propia aplicación en un
   `iframe` de 390 px, así que aplica de verdad su diseño de móvil.
 - **Cuentas de demostración**: sus datos de ejemplo (los mismos de `demo-data.json`, con las
-  fechas repartidas en las últimas semanas) viven en el navegador y **los comparten Safety Desk
+  fechas recolocadas alrededor de hoy, y restaurados en cada inicio de sesión) viven en el navegador y **los comparten Safety Desk
   y Safety Go** (mismo almacenamiento): lo que se haga en el teléfono se ve en Desk, y al revés.
   No se sincronizan con el servidor ni con otros dispositivos, y no envían correo desde el
   servidor. Si luego entra en ese navegador una cuenta real, su primera sincronización guarda

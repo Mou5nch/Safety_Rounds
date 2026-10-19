@@ -445,39 +445,76 @@
     });
   }
 
-  /**
-   * Sustituye los datos compartidos por la demostración completa (los ajustes
-   * generales no se tocan) y lo anota en los ajustes compartidos para que no
-   * vuelva a cargarse sola. Devuelve una promesa.
-   */
-  function loadSharedDemo(opts) {
-    var local = !!(opts && opts.local);
+  /** Descarga el archivo de demostración (siempre revalidado: no se sirve una copia vieja de la caché). */
+  function fetchDemo() {
     return fetch('/demo-data.json', { cache: 'no-cache' }).then(function (res) {
       if (!res.ok) throw new Error('No se ha podido descargar la copia de demostración.');
       return res.json();
-    }).then(function (data) {
-      redateDemo(data);
-      addDemoRecurrence(data);
-      Store.importAll(data, true, { keepSettings: true });
-      Store.saveSettings({ seeded: true, demoLoadedAt: Store.nowISO() });
-      // Demostración propia de este navegador (cuenta de demostración, sin servidor): si
-      // más tarde entra aquí una cuenta real, su primera sincronización guarda estos datos
-      // aparte y empieza con los del servidor, en vez de subirlos a los datos reales.
-      if (local) { try { localStorage.setItem('sr:presync', '1'); } catch (e) {} }
-      return true;
     });
   }
 
   /**
-   * Cuenta de demostración: carga los datos de ejemplo la primera vez que entra en
-   * este navegador. Safety Desk y Safety Go leen del mismo almacenamiento del
-   * navegador, así que los dos ven lo mismo (y lo que se haga en uno se ve en el otro).
+   * Sustituye los datos por la demostración (los ajustes generales no se tocan) y
+   * anota en los ajustes qué versión del archivo se cargó (demoVersion): así se sabe
+   * si la que hay guardada es la del archivo actual. Devuelve true.
+   */
+  function applyDemo(data, opts) {
+    var local = !!(opts && opts.local);
+    var version = data._exportedAt || '';
+    redateDemo(data);
+    addDemoRecurrence(data);
+    Store.importAll(data, true, { keepSettings: true });
+    Store.saveSettings({ seeded: true, demoLoadedAt: Store.nowISO(), demoVersion: version });
+    // Demostración propia de este navegador (cuenta de demostración, sin servidor): si
+    // más tarde entra aquí una cuenta real, su primera sincronización guarda estos datos
+    // aparte y empieza con los del servidor, en vez de subirlos a los datos reales.
+    if (local) { try { localStorage.setItem('sr:presync', '1'); } catch (e) {} }
+    return true;
+  }
+
+  /**
+   * Sustituye los datos compartidos por la demostración completa y lo anota en los
+   * ajustes compartidos para que no vuelva a cargarse sola. Devuelve una promesa.
+   */
+  function loadSharedDemo(opts) {
+    return fetchDemo().then(function (data) { return applyDemo(data, opts); });
+  }
+
+  /**
+   * Marca de «acaba de iniciar sesión»: la pone la pantalla de acceso al entrar (o
+   * registrarse) una cuenta de demostración, y la consume la primera pantalla de la
+   * aplicación que arranca (Safety Desk o Safety Go). Si falla la carga, se conserva
+   * para reintentarlo en el siguiente arranque.
+   */
+  var FRESH_KEY = 'sr:demo:fresh';
+
+  /**
+   * Cuenta de demostración: sus datos son SIEMPRE los de demo-data.json. Se cargan
+   *   · la primera vez en este navegador,
+   *   · en cada inicio de sesión (vuelven a ser los del archivo, se haya cambiado lo que se haya cambiado), y
+   *   · cuando el archivo ha cambiado desde la última carga (demoVersion), para que quien ya tenía
+   *     una versión anterior —y no ha cerrado sesión— vea la actual.
+   * Recargar la página dentro de una sesión NO borra lo que se esté haciendo. Safety Desk y
+   * Safety Go leen del mismo almacenamiento del navegador, así que ven lo mismo.
+   * Devuelve (promesa) true si es la primera carga, 'reset' si se ha restaurado, false si no ha hecho nada.
    */
   function ensureLocalDemo() {
     var role = null;
     try { role = (JSON.parse(localStorage.getItem('sr:auth') || 'null') || {}).role; } catch (e) {}
-    if (role !== 'usuario' || Store.settings().seeded) return Promise.resolve(false);
-    return loadSharedDemo({ local: true }).then(function () { return true; }).catch(function (e) {
+    if (role !== 'usuario') return Promise.resolve(false);
+    var fresh = false;
+    try { fresh = localStorage.getItem(FRESH_KEY) === '1'; } catch (e) {}
+    var first = !Store.settings().seeded;
+    var have = Store.settings().demoVersion;
+
+    return fetchDemo().then(function (data) {
+      var stale = have !== (data._exportedAt || '');
+      if (!first && !fresh && !stale) return false;
+      applyDemo(data, { local: true });
+      try { localStorage.removeItem(FRESH_KEY); } catch (e) {}
+      return first ? true : 'reset';
+    }).catch(function (e) {
+      // Sin conexión o archivo dañado: se sigue con lo que hay (o con nada, la primera vez) y se reintenta en el próximo arranque
       console.warn('[seed] no se ha podido cargar la demostración', e);
       return false;
     });
