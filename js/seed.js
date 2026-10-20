@@ -458,11 +458,35 @@
    * anota en los ajustes qué versión del archivo se cargó (demoVersion): así se sabe
    * si la que hay guardada es la del archivo actual. Devuelve true.
    */
+  /**
+   * Los registros de la copia llevan su fecha de modificación original. La sincronización se queda
+   * con la versión más reciente de cada registro, así que una demo «vieja» no podría resucitar lo
+   * borrado después ni deshacer lo editado. Se sellan con la hora de ahora, conservando su orden
+   * relativo (unos milisegundos de diferencia entre cada uno), y entonces la demo gana.
+   */
+  function stampNow(data) {
+    var recs = [];
+    ['folders', 'forms', 'visits', 'deviations', 'actions', 'catalogs', 'lists', 'files'].forEach(function (s) {
+      (data[s] || []).forEach(function (r) { if (r && r.id) recs.push(r); });
+    });
+    recs.sort(function (a, b) {
+      var x = String(a.updatedAt || a.createdAt || ''), y = String(b.updatedAt || b.createdAt || '');
+      return x < y ? -1 : x > y ? 1 : 0;
+    });
+    var now = Date.now();
+    recs.forEach(function (r, i) { r.updatedAt = new Date(now - (recs.length - 1 - i)).toISOString(); });
+  }
+
   function applyDemo(data, opts) {
     var local = !!(opts && opts.local);
     var version = data._exportedAt || '';
     redateDemo(data);
     addDemoRecurrence(data);
+    stampNow(data);
+    // Se olvida qué versión de cada registro creía tener el servidor («bases» de la
+    // sincronización): así la demo se sube entera y pisa también lo que otro dispositivo
+    // haya cambiado y este todavía no haya descargado, en vez de fusionarse clave a clave.
+    try { Store.meta.clear('h:'); } catch (e) { /* sin sincronización: no hay bases */ }
     Store.importAll(data, true, { keepSettings: true });
     Store.saveSettings({ seeded: true, demoLoadedAt: Store.nowISO(), demoVersion: version });
     // Demostración propia de este navegador (cuenta de demostración, sin servidor): si
@@ -527,10 +551,18 @@
   }
 
   /**
-   * La primera vez que un administrador o supervisor entra con los datos
-   * compartidos en blanco, se carga la demostración: así la WebApp de campo
-   * tiene qué gestionar desde el primer momento. No se repite si ya se cargó
-   * una vez o si hay datos propios (el botón de Ajustes sirve para forzarla).
+   * Administración y supervisión trabajan con los datos compartidos del servidor, y eso es
+   * lo que ven también los inspectores. Esos datos son SIEMPRE los de demo-data.json:
+   * se sustituyen (para todos los perfiles y dispositivos)
+   *   · la primera vez, con los datos compartidos en blanco,
+   *   · en cada inicio de sesión de administración o supervisión, y
+   *   · cuando el archivo ha cambiado desde la última carga (demoVersion, que viaja en los
+   *     ajustes compartidos: lo que carga un dispositivo ya no se vuelve a cargar en otro).
+   * Recargar la página dentro de una sesión no borra lo que se esté haciendo. Los inspectores no
+   * pueden escribir la configuración de cuestionarios, así que ellos solo reciben lo que
+   * haya cargado administración o supervisión. Devuelve (promesa) true si es la primera carga,
+   * 'reset' si se ha restaurado, false si no ha hecho nada. Con «Cargar la demostración completa»
+   * (Ajustes) se puede forzar a mano.
    */
   function ensureSharedDemo() {
     var role = null;
@@ -539,8 +571,19 @@
     if (!global.Sync || !Sync.enabled() || !Sync.ready()) return Promise.resolve(false);
     var st = Sync.status().status;
     if (navigator.onLine === false || st === 'offline' || st === 'auth' || st === 'error') return Promise.resolve(false);
-    if (Store.settings().demoLoadedAt || !sharedIsPristine()) return Promise.resolve(false);
-    return loadSharedDemo().then(function () { return true; }).catch(function (e) {
+
+    var fresh = false;
+    try { fresh = localStorage.getItem(FRESH_KEY) === '1'; } catch (e) {}
+    var first = !Store.settings().demoLoadedAt && sharedIsPristine();
+    var have = Store.settings().demoVersion;
+
+    return fetchDemo().then(function (data) {
+      var stale = have !== (data._exportedAt || '');
+      if (!first && !fresh && !stale) return false;
+      applyDemo(data);
+      try { localStorage.removeItem(FRESH_KEY); } catch (e) {}
+      return first ? true : 'reset';
+    }).catch(function (e) {
       console.warn('[seed] no se ha podido cargar la demostración compartida', e);
       return false;
     });

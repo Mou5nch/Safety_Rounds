@@ -143,10 +143,12 @@
     } catch (e) { /* modo privado: sin efecto, se volverá a pedir la sesión */ }
   }
 
-  // Cada inicio de sesión (o registro) de una cuenta de demostración restaura los datos
-  // de demo-data.json: la primera pantalla de la aplicación que arranque lo hace (js/seed.js).
+  // Cada inicio de sesión (o registro) de una cuenta de demostración, de administración o de
+  // supervisión restaura los datos de demo-data.json: la primera pantalla de la aplicación que
+  // arranque lo hace (js/seed.js). Los inspectores no la restauran: no pueden escribir la
+  // configuración compartida.
   function markFreshLogin(user) {
-    if (!user || user.role !== 'usuario') return;
+    if (!user || ['usuario', 'admin', 'supervisor'].indexOf(user.role) === -1) return;
     try { localStorage.setItem('sr:demo:fresh', '1'); } catch (e) { /* sin almacenamiento: no hay datos que restaurar */ }
   }
 
