@@ -350,9 +350,10 @@
   }
 
   // De los ajustes, solo estos viajan al servidor (son los que ven todos los
-  // usuarios y la WebApp de campo). El resto —inspector por defecto, marca de
-  // demostración cargada…— es de cada dispositivo.
-  var SHARED_SETTINGS = ['appName', 'company', 'department', 'logo', 'pdfFooter', 'autoEmail', 'demoLoadedAt'];
+  // usuarios y la WebApp de campo). El resto —inspector por defecto…— es de cada
+  // dispositivo. La versión de la demostración cargada (demoVersion) viaja para que lo
+  // que restaura un dispositivo no lo restaure otro otra vez.
+  var SHARED_SETTINGS = ['appName', 'company', 'department', 'logo', 'pdfFooter', 'autoEmail', 'demoLoadedAt', 'demoVersion'];
 
   function saveSettings(patch) {
     var s = settings();

@@ -485,7 +485,8 @@
     }).then(function () {
       // Demostración: la propia de la cuenta, o (datos compartidos en blanco) la que carga un administrador
       return demo ? Seed.ensureLocalDemo() : Seed.ensureSharedDemo();
-    }).then(function () {
+    }).then(function (demoLoaded) {
+      boot.restored = demoLoaded === 'reset';
       Store.migrate();
       buildChrome();
 
@@ -496,6 +497,7 @@
 
       var hash = (location.hash || '').replace('#', '');
       go(Views[hash] ? hash : 'home');
+      if (boot.restored) setTimeout(function () { UI.toast('Hemos restaurado los datos de demostración.', 'info'); }, 700);
 
       // Sesión: se confirma con el servidor y se mantiene viva con un latido
       function check() {

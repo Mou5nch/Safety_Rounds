@@ -706,10 +706,20 @@ principal pueden cargar **la misma demostración que ven las cuentas de demostra
 (`demo-data.json`: 3 cuestionarios, 4 plantas, 8 visitas con desviaciones, fotos y
 firmas, y plan de acción) en los datos compartidos:
 
-- **Automática**: la primera vez que un administrador o supervisor entra con los
-  datos compartidos en blanco (sin visitas, desviaciones ni acciones, y a lo sumo el
-  cuestionario de bienvenida), se carga sola. No se repite si ya se cargó una vez
-  (queda anotado en los ajustes compartidos) ni si ya hay datos propios.
+- **Automática**: los datos compartidos son **siempre** los del archivo. Se sustituyen
+  (para todos los perfiles y dispositivos, también en el servidor):
+  1. la primera vez, con los datos compartidos en blanco;
+  2. **en cada inicio de sesión de administración o supervisión**: se pierde lo cambiado
+     desde el último acceso. Recargar la página o pasar de Desk a Go dentro de la misma
+     sesión no borra nada;
+  3. cuando el archivo cambia: se compara su fecha de exportación con la versión de la
+     última carga (`demoVersion`, que viaja en los ajustes compartidos), así que si otro
+     dispositivo ya la restauró no se repite.
+
+  La restauración pisa lo que haya en el servidor, incluido lo cambiado desde otro
+  dispositivo que este todavía no hubiera descargado. Los **inspectores** no la
+  restauran (no pueden escribir la configuración compartida), pero ven la que haya
+  cargado administración o supervisión, igual que cualquier cambio compartido.
 - **A mano**: *Ajustes y datos → Datos y copias de seguridad → Cargar la demostración
   completa* (APP principal) o *Mi cuenta → Cargar la demostración* (campo).
   **Sustituye todos los datos compartidos**; la identidad del departamento (nombre,
